@@ -92,7 +92,8 @@ void client::send_message(
     T const &request,                               ///< The application data unit of the request.
     client::Callback<typename T::response> callback ///< The callback to invoke when the reply arrives.
 ) {
-    strand.dispatch([this, unit, request, callback]() mutable {
+    // Having this as dispatch makes composing reads, wait and then write tricky at best.
+    strand.post([this, unit, request, callback]() mutable {
         auto handler = make_handler<typename T::response>(std::move(callback));
 
         tcp_mbap header;
