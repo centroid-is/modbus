@@ -126,11 +126,6 @@ void client::connect(std::string const &hostname, std::string const &port,
 
 /// Disconnect from the server.
 void client::close() {
-    // Call all remaining transaction handlers with operation_aborted, then clear transactions.
-    for (auto &transaction : transactions)
-        transaction.second.handler(nullptr, 0, {}, asio::error::operation_aborted);
-    transactions.clear();
-
     // Shutdown and close socket.
     std::error_code error;
     resolver.cancel();
@@ -234,14 +229,11 @@ void client::on_connect(std::error_code const &error, tcp::resolver::iterator it
     // Start read loop if no error occured.
     if (!error) {
         _connected = true;
-        //Another shitfix,
-        // When connection is dropped the remaining transactions just hang.
-        // If we are here. aka our connection is connected and we have undealt with transactions
-        // Those transactions are not coming because our connection was just established
-        // Call the handlers with no response and an error code so that they can decide what to do.
-        for(auto &transaction : transactions){
-            transaction.second.handler(0,0,modbus::tcp_mbap(),asio::error::connection_reset);
+        // Call all remaining transaction handlers with operation_aborted, then clear transactions.
+        for (auto &transaction : transactions){
+            transaction.second.handler(nullptr, 0, {}, asio::error::operation_aborted);
         }
+        transactions.clear();
         auto handler = strand.wrap(std::bind(&client::on_read, this, std::placeholders::_1, std::placeholders::_2));
         socket.async_read_some(read_buffer.prepare(1024), handler);
     }
