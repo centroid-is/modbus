@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include "response.hpp"
+#include "modbus/response.hpp"
 #include "serialize_base.hpp"
 
 namespace modbus {

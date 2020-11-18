@@ -23,37 +23,49 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <iostream>
+#include <thread>
+#include <vector>
 
-#include "client.hpp"
+#include "modbus/client.hpp"
 
 modbus::client *client;
 
 void on_io_error(std::error_code const &error) { std::cout << "Read error: " << error.message() << "\n"; }
 
+void on_write_reply(modbus::tcp_mbap const &header, modbus::response::write_multiple_registers const &response,
+                    std::error_code const &error);
+
 void on_read_reply(modbus::tcp_mbap const &header, modbus::response::read_holding_registers const &response,
                    std::error_code const &error) {
     (void)header;
 
-    std::cout << "Multiple registers (error " << error.message() << ")\n";
-    for (std::size_t i = 0; i < response.values.size(); ++i) {
-        std::cout << "\t"
-                  << " " << response.values[i] << "\n";
+    if ( ! error ){
+        std::cout << "Read registers" << std::endl;
     }
+    client->write_multiple_registers(0, 128, {1234, 4321, 1, 2, 3, 4, 5, 6, 7, 8}, on_write_reply);
+    // std::cout << "Multiple registers (error " << error.message() << ")\n";
+    // for (std::size_t i = 0; i < response.values.size(); ++i) {
+        // std::cout << "\t"
+                  // << " " << response.values[i] << "\n";
+    // }
 }
 
 void on_write_reply(modbus::tcp_mbap const &header, modbus::response::write_multiple_registers const &response,
                     std::error_code const &error) {
-    (void)header;
-
-    std::cout << "Wrote " << response.count << " registers starting at " << response.address << " with error "
-              << error.message() << "\n";
+    if ( !error ) {
+        std::cout << "Wrote " << response.count << " registers starting at " << response.address << " with error "
+                  << error.message() << "\n";
+    }
     client->read_holding_registers(0, 128, 20, on_read_reply);
 }
 
 
 void on_connect(std::error_code const &error) {
-    std::cout << "Connected (error " << error.message() << ").\n";
-    client->write_multiple_registers(0, 128, {1234, 4321, 1, 2, 3, 4, 5, 6, 7, 8}, on_write_reply);
+    if ( ! error ){
+        std::cout << "Connected!" << std::endl;
+    } else {
+        std::cout << "Connected (error " << error.message() << ").\n";
+    }
 }
 
 int main(int argc, char **argv) {
@@ -62,6 +74,7 @@ int main(int argc, char **argv) {
         return -1;
     }
 
+    std::vector<std::thread> pool;
     asio::io_context io_context;
 
     std::string hostname = argv[1];
@@ -72,5 +85,16 @@ int main(int argc, char **argv) {
 
     client.connect(hostname, "502", on_connect);
 
-    io_context.run();
+    for(int i = 0; i < 10; i++){
+        pool.emplace_back([&]{
+            io_context.run();
+        });
+    }
+    while(true){
+        std::this_thread::sleep_for(std::chrono::seconds((rand() / 1000) % 10));
+        client.write_multiple_registers(0, 128, {1234, 4321, 1, 2, 3, 4, 5, 6, 7, 8}, on_write_reply);
+    }
+    for(int i = 0; i < 10; i++) {
+        pool[i].join();
+    }
 }

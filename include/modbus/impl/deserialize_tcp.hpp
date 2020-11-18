@@ -23,40 +23,22 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
-#include <system_error>
-#include <iostream>
+#include "deserialize_base.hpp"
+#include "modbus/tcp.hpp"
 
 namespace modbus {
+namespace impl {
 
-/// Modbus error code constants.
-namespace errc {
-    enum errc_t {
-        no_error = 0x0,
-        illegal_function = 0x01,
-        illegal_data_address = 0x02,
-        illegal_data_value = 0x03,
-        server_device_failure = 0x04,
-        acknowledge = 0x05,
-        server_device_busy = 0x06,
-        memory_parity_error = 0x08,
-        gateway_path_unavailable = 0x0a,
-        gateway_target_device_failed_to_respond = 0x0b,
-        message_size_mismatch = 0x1001,
-        message_too_large = 0x1002,
-        unexpected_function_code = 0x1003,
-        invalid_value = 0x1004,
-    };
-}
+    /// Deserialize a TCP MBAP header.
+    template <typename InputIterator>
+    InputIterator deserialize(InputIterator start, std::size_t length, tcp_mbap &header, std::error_code &error) {
+        if (!check_length(length, header.size(), error)) return start;
+        start = deserialize_be16(start, header.transaction);
+        start = deserialize_be16(start, header.protocol);
+        start = deserialize_be16(start, header.length);
+        start = deserialize_be8(start, header.unit);
+        return start;
+    }
 
-/// Enum type for Modbus error codes.
-using errc_t = errc::errc_t;
-
-/// The error category for Modbus errors.
-std::error_category const &modbus_category();
-
-/// Get an error code for a Modbus error,
-inline std::error_code modbus_error(modbus::errc_t error_code) {
-    return std::error_code(error_code, modbus_category());
-}
-
+} // namespace impl
 } // namespace modbus

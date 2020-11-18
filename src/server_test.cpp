@@ -1,3 +1,6 @@
+//
+// Created by omar on 11/16/20.
+//
 // Copyright (c) 2017, Fizyr (https://fizyr.com)
 //
 // Redistribution and use in source and binary forms, with or without
@@ -22,24 +25,35 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
-#include "deserialize_base.hpp"
-#include "tcp.hpp"
+#include <iostream>
 
-namespace modbus {
-namespace impl {
+#include <modbus/client.hpp>
+#include <modbus/server.hpp>
 
-    /// Deserialize a TCP MBAP header.
-    template <typename InputIterator>
-    InputIterator deserialize(InputIterator start, std::size_t length, tcp_mbap &header, std::error_code &error) {
-        if (!check_length(length, 7, error))
-            return start;
-        start = deserialize_be16(start, header.transaction);
-        start = deserialize_be16(start, header.protocol);
-        start = deserialize_be16(start, header.length);
-        start = deserialize_be8(start, header.unit);
-        return start;
+int main(int argc, char* argv[]) {
+    std::string hostname = "localhost";
+    if (argc > 1) {
+        hostname = argv[1];
     }
 
-} // namespace impl
-} // namespace modbus
+    asio::io_service ios;
+
+
+    auto handler = std::make_shared<modbus::Default_handler>();
+    // Use non-standard 1502 (instead of 502) port to avoid having to use sudo for testing
+    modbus::Server<modbus::Default_handler> server{ios, handler, 1502};
+
+    // boost::asio::deadline_timer stopper(ios, std::chrono::minutes(2));
+    asio::high_resolution_timer stopper(ios, std::chrono::seconds(20));
+    stopper.async_wait(
+        [&server](const std::error_code&) {
+            std::cerr << "Timeout, killing!" << std::endl;
+            server.stop();
+        }
+    );
+
+    std::cout << "Starting server" << std::endl;
+    ios.run();
+}
+
+// vim: autoindent syntax=cpp noexpandtab tabstop=4 softtabstop=4 shiftwidth=4

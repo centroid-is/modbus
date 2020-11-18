@@ -42,15 +42,12 @@
 
 namespace modbus {
 
-
 /// A connection to a Modbus server.
 class client {
   public:
-    typedef asio::ip::tcp tcp;
-
-    /// Callback type.
     template <typename T>
     using Callback = std::function<void(tcp_mbap const &header, T const &response, std::error_code const &)>;
+    typedef asio::ip::tcp tcp;
 
     /// Callback to invoke for IO errors that cants be linked to a specific transaction.
     /**
@@ -81,32 +78,22 @@ class client {
     /// Buffer for read operations.
     asio::streambuf read_buffer;
 
-    /// Buffer for write operations.
-    asio::streambuf write_buffer;
-
-    /// Output iterator for write buffer.
-    std::ostreambuf_iterator<char> output_iterator{&write_buffer};
-
     /// Transaction table to keep track of open transactions.
     std::map<int, transaction_t> transactions;
 
     /// Next transaction ID.
     std::uint16_t next_id = 0;
 
-    /// Indicates if a message is currently being written.
-    /**
-	 * During this time, new messages will be buffered instead.
-	 * Only the latest message gets buffered, all older messages are discarded.
-	 */
-    std::atomic_flag writing{false};
-
     /// Track connected state of client.
     bool _connected;
 
+    /// Socket options
+    asio::ip::tcp::no_delay no_delay_option;
+    asio::socket_base::keep_alive keep_alive_option;
+
   public:
     /// Construct a client.
-    client(asio::io_context &io_context ///< The IO context to use.
-    );
+    client(asio::io_context &io_context /*< The IO context to use.*/);
 
     /// Get the IO executor used by the client.
     tcp::socket::executor_type io_executor() { return socket.get_executor(); };
@@ -225,6 +212,9 @@ class client {
     );
 
   protected:
+    /// Set socket options
+    void set_sock_options();
+
     /// Called when the resolver finished resolving a hostname.
     void on_resolve(std::error_code const &error,     ///<[in] The error that occured, if any.
                     tcp::resolver::iterator iterator, ///<[in] The iterator to the first endpoint found by the resolver.
@@ -245,7 +235,7 @@ class client {
     );
 
     /// Called when the socket finished a write operation.
-    void on_write(std::error_code const &error, ///<[in] The error that occured, if any.
+    void on_write(std::shared_ptr<asio::streambuf> keep_memory_active, std::error_code const &error, ///<[in] The error that occured, if any.
                   std::size_t bytes_transferred ///<[in] The amount of bytes read from the socket.
     );
 
@@ -257,16 +247,6 @@ class client {
 	 * \return True if a message was parsed succesfully, false if there was not enough data.
 	 */
     bool process_message();
-
-    /// Flush the write buffer.
-    void flush_write_buffer_();
-
-    /// Flush the write buffer.
-    /**
-	 * Does nothing if a write operation is still busy.
-	 * The buffer will be automatically flushed when when the write operation finishes.
-	 */
-    void flush_write_buffer();
 
     /// Send a Modbus request to the server.
     template <typename T>

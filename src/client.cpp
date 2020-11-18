@@ -29,9 +29,11 @@
 #include <asio/read.hpp>
 #include <asio/write.hpp>
 
-#include "client.hpp"
-#include "impl/deserialize.hpp"
-#include "impl/serialize.hpp"
+#include <iostream>
+
+#include "modbus/client.hpp"
+#include "modbus/impl/deserialize.hpp"
+#include "modbus/impl/serialize.hpp"
 
 namespace modbus {
 
@@ -92,7 +94,6 @@ void client::send_message(
     T const &request,                               ///< The application data unit of the request.
     client::Callback<typename T::response> callback ///< The callback to invoke when the reply arrives.
 ) {
-    // Having this as dispatch makes composing reads, wait and then write tricky at best.
     strand.post([this, unit, request, callback]() mutable {
         auto handler = make_handler<typename T::response>(std::move(callback));
 
@@ -102,16 +103,24 @@ void client::send_message(
         header.length = request.length() + 1; // Unit ID is also counted in length field.
         header.unit = unit;
 
-        auto out = std::ostreambuf_iterator<char>(&write_buffer);
+        std::shared_ptr<asio::streambuf> write_buffer = std::make_shared<asio::streambuf>();
+        auto out = std::ostreambuf_iterator<char>(write_buffer.get());
         impl::serialize(out, header);
         impl::serialize(out, request);
-        flush_write_buffer();
+        auto write_handler = strand.wrap(std::bind(&client::on_write, this, write_buffer, std::placeholders::_1, std::placeholders::_2));
+        asio::async_write(socket, *write_buffer, write_handler);
     });
 }
 
 /// Construct a client.
-client::client(asio::io_context &io_context) : strand(io_context), socket(io_context), resolver(io_context) {
+client::client(asio::io_context &io_context) : strand(io_context), socket(io_context), resolver(io_context), no_delay_option(true), keep_alive_option(true) {
     _connected = false;
+}
+
+/// Set socket options
+void client::set_sock_options(){
+    socket.set_option(no_delay_option);
+    socket.set_option(keep_alive_option);
 }
 
 /// Connect to a server.
@@ -126,11 +135,13 @@ void client::connect(std::string const &hostname, std::string const &port,
 
 /// Disconnect from the server.
 void client::close() {
-    // Shutdown and close socket.
-    std::error_code error;
-    resolver.cancel();
-    socket.shutdown(tcp::socket::shutdown_both, error);
-    socket.close(error);
+    if ( socket.is_open() ){
+        // Shutdown and close socket.
+        std::error_code error;
+        resolver.cancel();
+        socket.shutdown(tcp::socket::shutdown_both, error);
+        socket.close(error);
+    }
     _connected = false;
 }
 
@@ -138,8 +149,6 @@ void client::close() {
 void client::reset() {
     // Clear buffers.
     read_buffer.consume(read_buffer.size());
-    write_buffer.consume(write_buffer.size());
-    writing.clear();
 
     // Old socket may hold now invalid file descriptor.
     socket = asio::ip::tcp::socket(io_executor());
@@ -229,6 +238,7 @@ void client::on_connect(std::error_code const &error, tcp::resolver::iterator it
     // Start read loop if no error occured.
     if (!error) {
         _connected = true;
+        set_sock_options();
         // Call all remaining transaction handlers with operation_aborted, then clear transactions.
         for (auto &transaction : transactions){
             transaction.second.handler(nullptr, 0, {}, asio::error::operation_aborted);
@@ -258,20 +268,10 @@ void client::on_read(std::error_code const &error, size_t bytes_transferred) {
 }
 
 /// Called when the socket finished a write operation.
-void client::on_write(std::error_code const &error, size_t bytes_transferred) {
+void client::on_write(std::shared_ptr<asio::streambuf> keep_memory_active, std::error_code const &error, size_t bytes_transferred) {
     if (error) {
         if (on_io_error)
             on_io_error(error);
-        writing.clear();
-        return;
-    }
-
-    write_buffer.consume(bytes_transferred);
-
-    if (write_buffer.size()) {
-        flush_write_buffer_();
-    } else {
-        writing.clear();
     }
 }
 
@@ -300,7 +300,6 @@ bool client::process_message() {
     if (error) {
         if (on_io_error)
             on_io_error(error);
-        close();
         return false;
     }
 
@@ -311,6 +310,7 @@ bool client::process_message() {
     auto transaction = transactions.find(header.transaction);
     if (transaction == transactions.end()) {
         // TODO: Transaction not found. Possibly call on_io_error?
+        std::cerr << "Modbus client.cpp transaction not found!" << std::endl;
         return false;
     }
     data = transaction->second.handler(data, header.length - 1, header, std::error_code());
@@ -321,19 +321,5 @@ bool client::process_message() {
 
     return true;
 }
-
-/// Flush the write buffer.
-void client::flush_write_buffer_() {
-    auto handler = strand.wrap(std::bind(&client::on_write, this, std::placeholders::_1, std::placeholders::_2));
-    socket.async_write_some(write_buffer.data(), handler);
-}
-
-/// Flush the write buffer.
-void client::flush_write_buffer() {
-    if (writing.test_and_set())
-        return;
-    flush_write_buffer_();
-}
-
 
 } // namespace modbus

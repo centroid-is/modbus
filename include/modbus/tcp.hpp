@@ -46,6 +46,11 @@ struct tcp_mbap {
 
     /// Unit identifier.
     std::uint8_t unit;
+
+    /// Header size
+    static constexpr int size() {
+        return 7;
+    }
 };
 
 /// Modbus/TCP protocol data unit (PDU).

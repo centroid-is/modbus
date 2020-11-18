@@ -29,7 +29,7 @@
 
 #include <system_error>
 
-#include "error.hpp"
+#include "modbus/error.hpp"
 
 namespace modbus {
 namespace impl {
@@ -112,8 +112,7 @@ namespace impl {
     InputIterator deserialize_function(InputIterator start, std::uint8_t expected_function, std::error_code &error) {
         std::uint8_t function;
         start = deserialize_be8(start, function);
-        if (function != expected_function && !error)
-            error = modbus_error(errc::unexpected_function_code);
+        if (function != expected_function && !error) error = modbus_error(errc::unexpected_function_code);
         return start;
     }
 
