@@ -103,12 +103,10 @@ void client::send_message(
         header.length = request.length() + 1; // Unit ID is also counted in length field.
         header.unit = unit;
 
-        std::shared_ptr<asio::streambuf> write_buffer = std::make_shared<asio::streambuf>();
-        auto out = std::ostreambuf_iterator<char>(write_buffer.get());
+        auto out = std::ostreambuf_iterator<char>(&write_buffer);
         impl::serialize(out, header);
         impl::serialize(out, request);
-        auto write_handler = strand.wrap(std::bind(&client::on_write, this, write_buffer, std::placeholders::_1, std::placeholders::_2));
-        asio::async_write(socket, *write_buffer, write_handler);
+        flush_write_buffer();
     });
 }
 
@@ -149,6 +147,9 @@ void client::close() {
 void client::reset() {
     // Clear buffers.
     read_buffer.consume(read_buffer.size());
+    write_buffer.consume(write_buffer.size());
+    writing.clear();
+
 
     // Old socket may hold now invalid file descriptor.
     socket = asio::ip::tcp::socket(io_executor());
@@ -268,10 +269,21 @@ void client::on_read(std::error_code const &error, size_t bytes_transferred) {
 }
 
 /// Called when the socket finished a write operation.
-void client::on_write(std::shared_ptr<asio::streambuf> keep_memory_active, std::error_code const &error, size_t bytes_transferred) {
+void client::on_write(std::error_code const &error, size_t bytes_transferred) {
     if (error) {
         if (on_io_error)
             on_io_error(error);
+        writing.clear();
+        return;
+    }
+
+    write_buffer.consume(bytes_transferred);
+
+    if (write_buffer.size()) {
+        flush_write_buffer_();
+    } else {
+        writing.clear();
+
     }
 }
 
@@ -300,6 +312,7 @@ bool client::process_message() {
     if (error) {
         if (on_io_error)
             on_io_error(error);
+        close();
         return false;
     }
 
@@ -321,5 +334,17 @@ bool client::process_message() {
 
     return true;
 }
+void client::flush_write_buffer_() {
+    auto handler = strand.wrap(std::bind(&client::on_write, this, std::placeholders::_1, std::placeholders::_2));
+    socket.async_write_some(write_buffer.data(), handler);
+}
+
+/// Flush the write buffer.
+void client::flush_write_buffer() {
+    if (writing.test_and_set())
+        return;
+    flush_write_buffer_();
+}
+
 
 } // namespace modbus
