@@ -72,8 +72,14 @@ class Connection : public std::enable_shared_from_this<Connection<ServerHandler>
 
   void stop(){
       if (socket_.is_open()) {
-          std::cerr << "Connection from ip " << socket_.remote_endpoint().address().to_string() << ":"
+          // socket does not always contain this information
+          try{
+            std::cerr << "Connection from ip " 
+                    << socket_.remote_endpoint().address().to_string() << ":"
                     << socket_.remote_endpoint().port() << " Closing!" << std::endl;
+          } catch(const std::system_error& e){
+            std::cerr << "Connection closing!" << std::endl;
+          }
           socket_.close();
       }
   }
@@ -242,6 +248,10 @@ private:
             if(!ec){
                 std::cerr << "accepted new connection with ip : " << socket.remote_endpoint().address().to_string() <<
                                                              ":" << socket.remote_endpoint().port() << std::endl;
+                // Set socket options recomended by modbus implementation guide.                                             
+
+                socket.set_option(asio::ip::tcp::no_delay(true));
+                socket.set_option(asio::socket_base::keep_alive(true));
                 std::make_shared<Connection<ServerHandler>>(std::move(socket), _mgr, _handler)->start();
 
                 start_accept();
