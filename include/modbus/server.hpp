@@ -35,6 +35,7 @@
 #include <asio.hpp>
 #include <iostream>
 #include <algorithm>
+#include <functional>
 
 #include "functions.hpp"
 #include "tcp.hpp"
