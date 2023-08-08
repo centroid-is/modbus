@@ -1,0 +1,78 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"jsonFile" : "directory-.-Debug-f5ebdc15457944623624.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.25"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "modbus",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "modbus::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-modbus-Debug-ea58184956d5093020d2.json",
+					"name" : "modbus",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "modbus_server_test::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-modbus_server_test-Debug-d051cc54bce913c3449d.json",
+					"name" : "modbus_server_test",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "modbus_test::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-modbus_test-Debug-c3563d6dfbe615ff922a.json",
+					"name" : "modbus_test",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/omar/source/repos/modbus/cmake-build-debug",
+		"source" : "/home/omar/source/repos/modbus"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 6
+	}
+}

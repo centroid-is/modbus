@@ -30,15 +30,18 @@
 #include <map>
 #include <string>
 
-#include <asio/io_context.hpp>
-#include <asio/ip/tcp.hpp>
-#include <asio/strand.hpp>
-#include <asio/streambuf.hpp>
+#include <boost/asio.hpp>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/strand.hpp>
+#include <boost/asio/streambuf.hpp>
 
 #include "functions.hpp"
 #include "request.hpp"
 #include "response.hpp"
 #include "tcp.hpp"
+
+namespace asio = boost::asio;
 
 namespace modbus {
 

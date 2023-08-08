@@ -29,31 +29,33 @@
 
 #include <modbus/client.hpp>
 #include <modbus/server.hpp>
+#include <modbus/default_handler.hpp>
 
 int main(int argc, char* argv[]) {
-    std::string hostname = "localhost";
-    if (argc > 1) {
-        hostname = argv[1];
-    }
+    asio::io_context ctx;
 
-    asio::io_service ios;
+    auto handler = std::make_shared<default_handler>();
+    handler->registers_[0] = 0;
+    handler->registers_[1] = 1;
+    handler->registers_[2] = 2;
+    handler->registers_[3] = 3;
+    handler->registers_[4] = 4;
+    handler->registers_[5] = 5;
+    handler->registers_[6] = 6;
+    handler->registers_[7] = 7;
+    handler->registers_[8] = 8;
+    handler->registers_[9] = 9;
+    handler->registers_[10] = 10;
+    handler->registers_[11] = 11;
+    handler->registers_[12] = 12;
+    handler->registers_[13] = 13;
+    handler->registers_[14] = 14;
 
-
-    auto handler = std::make_shared<modbus::Default_handler>();
-    // Use non-standard 1502 (instead of 502) port to avoid having to use sudo for testing
-    modbus::Server<modbus::Default_handler> server{ios, handler, 1502};
-
-    // boost::asio::deadline_timer stopper(ios, std::chrono::minutes(2));
-    asio::high_resolution_timer stopper(ios, std::chrono::seconds(20));
-    stopper.async_wait(
-        [&server](const std::error_code&) {
-            std::cerr << "Timeout, killing!" << std::endl;
-            server.stop();
-        }
-    );
+    modbus::server<default_handler> server{ctx, handler, 1502};
+    server.start();
 
     std::cout << "Starting server" << std::endl;
-    ios.run();
+    ctx.run();
 }
 
 // vim: autoindent syntax=cpp noexpandtab tabstop=4 softtabstop=4 shiftwidth=4

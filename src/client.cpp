@@ -25,9 +25,9 @@
 #include <functional>
 #include <system_error>
 
-#include <asio/connect.hpp>
-#include <asio/read.hpp>
-#include <asio/write.hpp>
+#include <boost/asio/connect.hpp>
+#include <boost/asio/read.hpp>
+#include <boost/asio/write.hpp>
 
 #include <iostream>
 
@@ -137,10 +137,9 @@ void client::connect(std::string const &hostname, std::string const &port,
 void client::close() {
     if ( socket.is_open() ){
         // Shutdown and close socket.
-        std::error_code error;
         resolver.cancel();
-        socket.shutdown(tcp::socket::shutdown_both, error);
-        socket.close(error);
+        socket.shutdown(boost::asio::socket_base::shutdown_type::shutdown_both);
+        socket.close();
     }
     _connected = false;
 }
@@ -241,7 +240,7 @@ void client::on_connect(std::error_code const &error, tcp::resolver::iterator it
         set_sock_options();
         // Call all remaining transaction handlers with operation_aborted, then clear transactions.
         for (auto &transaction : transactions){
-            transaction.second.handler(nullptr, 0, {}, asio::error::operation_aborted);
+            transaction.second.handler(nullptr, 0, {}, make_error_code(asio::error::operation_aborted));
         }
         transactions.clear();
         auto handler = strand.wrap(std::bind(&client::on_read, this, std::placeholders::_1, std::placeholders::_2));

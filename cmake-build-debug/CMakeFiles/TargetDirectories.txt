@@ -1,0 +1,5 @@
+/home/omar/source/repos/modbus/cmake-build-debug/CMakeFiles/modbus.dir
+/home/omar/source/repos/modbus/cmake-build-debug/CMakeFiles/modbus_test.dir
+/home/omar/source/repos/modbus/cmake-build-debug/CMakeFiles/modbus_server_test.dir
+/home/omar/source/repos/modbus/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/omar/source/repos/modbus/cmake-build-debug/CMakeFiles/rebuild_cache.dir
