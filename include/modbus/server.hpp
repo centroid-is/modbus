@@ -5,8 +5,11 @@
 #include <cstdint>
 #include <ostream>
 #include <set>
+#include <expected>
 
 #include <boost/asio.hpp>
+#include <boost/asio/as_tuple.hpp>
+#include <boost/asio/experimental/awaitable_operators.hpp>
 #include <iostream>
 #include <algorithm>
 #include <functional>
@@ -26,188 +29,173 @@ using asio::awaitable;
 using asio::use_awaitable;
 using asio::detached;
 
+//using awaitable_tuple = asio::as_tuple(use_awaitable);
+
+using std::chrono::steady_clock;
+using asio::steady_timer;
+
+using namespace std::chrono_literals;
+using namespace asio::experimental::awaitable_operators;
+
 namespace modbus {
 
-    template<typename server_handler_t>
-    class connection_manager;
+    template<typename Request>
+    std::expected<std::vector<uint8_t>, modbus::errc_t>
+    handle_request(tcp_mbap header, const uint8_t *data, size_t data_size, auto &&handler) {
+        Request req;
+        std::error_code err;
+        impl::deserialize(data, data_size, req, err);
 
-    template<typename server_handler_t>
-    class Connection : public std::enable_shared_from_this<Connection<server_handler_t> > {
-    public:
-        Connection(asio::ip::tcp::socket socket,
-                   std::shared_ptr<server_handler_t> handler)
-                : socket_(std::move(socket)),
-                  handler_(handler) {
+        if (err) {
+            return std::unexpected(modbus::errc_t::illegal_data_value);
         }
-
-        asio::ip::tcp::socket &socket() {
-            return socket_;
+        modbus::errc_t modbus_error = modbus::errc_t::no_error;
+        typename Request::response resp = handler->handle(header.unit, req, modbus_error);
+        if (modbus_error) {
+            return std::unexpected(modbus_error);
         }
-
-        void start() {
-            auto handler = std::bind(&Connection<server_handler_t>::handle_read,
-                                     Connection<server_handler_t>::shared_from_this(), std::placeholders::_1,
-                                     std::placeholders::_2);
-            socket_.async_read_some(read_buffer.prepare(1024), handler);
-        }
-
-        void stop() {
-            if (socket_.is_open()) {
-                // socket does not always contain this information
-                try {
-                    std::cerr << "Connection from ip "
-                              << socket_.remote_endpoint().address().to_string() << ":"
-                              << socket_.remote_endpoint().port() << " Closing!" << std::endl;
-                } catch (const std::system_error &e) {
-                    std::cerr << "Connection closing!" << std::endl;
-                }
-                socket_.close();
-            }
-        }
-
-        Connection() = delete;
-
-        Connection(const Connection &) = delete;
-
-        Connection &operator=(const Connection &) = delete;
-
-        ~Connection() {}
-
-    private:
-        asio::ip::tcp::socket socket_;
-        std::shared_ptr<server_handler_t> handler_;
-        asio::streambuf read_buffer;
-
-        void close() {
-            stop();
-        }
-
-        void read_data(const std::error_code &error) {
-            if (error) {
-                close();
-                return;
-            }
-            auto handler = std::bind(&Connection<server_handler_t>::handle_read,
-                                     Connection<server_handler_t>::shared_from_this(), std::placeholders::_1,
-                                     std::placeholders::_2);
-            socket_.async_read_some(read_buffer.prepare(1024), handler);
-        }
-
-        void handle_read(const std::error_code &error, std::size_t bytes_transferred) {
-            if (error) {
-                close();
-                return;
-            } else {
-                asio::streambuf write_buffer;
-                auto out = std::ostreambuf_iterator<char>(&write_buffer);
-                auto handler = std::bind(&Connection<server_handler_t>::read_data,
-                                         Connection<server_handler_t>::shared_from_this(), std::placeholders::_1);
-
-                read_buffer.commit(bytes_transferred); // Move the bytes from the output sequence to the input sequence
-                tcp_mbap header;
-                auto data = asio::buffer_cast<const uint8_t *>(read_buffer.data());
-                std::error_code err;
-                data = impl::deserialize(data, read_buffer.size(), header, err);
-                if (err) {
-                    read_buffer.consume(read_buffer.size());
-                    close();
-                    return;
-                }
-                read_buffer.consume(header.size());
-                if (header.length < 2) {
-                    build_error(out, header, 0, errc::illegal_function);
-                } else {
-                    size_t data_size = static_cast<size_t>(header.length - 1);
-                    if (read_buffer.size() >= data_size) {
-                        handle_data(out, header, data, data_size);
-                        read_buffer.consume(data_size);
-                    } else {
-                        build_error(out, header, 0, errc::illegal_data_value);
-                    }
-                }
-                asio::async_write(socket_, write_buffer, handler);
-            }
-        }
-
-
-        void handle_data(std::ostreambuf_iterator<char> &out, tcp_mbap header, const uint8_t *data, size_t data_size) {
-            // Switch can probably be avoided by templatizing requests and responses or putting them in a type list
-            switch (*data) {
-                case functions::read_coils:
-                    handle_request<request::read_coils>(out, header, data, data_size);
-                    break;
-                case functions::read_discrete_inputs:;
-                    handle_request<request::read_discrete_inputs>(out, header, data, data_size);
-                    break;
-                case functions::read_holding_registers:;
-                    handle_request<request::read_holding_registers>(out, header, data, data_size);
-                    break;
-                case functions::read_input_registers:;
-                    handle_request<request::read_input_registers>(out, header, data, data_size);
-                    break;
-                case functions::write_single_coil:;
-                    handle_request<request::write_single_coil>(out, header, data, data_size);
-                    break;
-                case functions::write_single_register:;
-                    handle_request<request::write_single_register>(out, header, data, data_size);
-                    break;
-                case functions::write_multiple_coils:;
-                    handle_request<request::write_multiple_coils>(out, header, data, data_size);
-                    break;
-                case functions::write_multiple_registers:;
-                    handle_request<request::write_multiple_registers>(out, header, data, data_size);
-                    break;
-                default:
-                    build_error(out, header, 0, errc::illegal_function);
-                    break;
-            }
-        }
-
-
-        template<typename Request>
-        void
-        handle_request(std::ostreambuf_iterator<char> &out, tcp_mbap header, const uint8_t *data, size_t data_size) {
-            Request req;
-            std::error_code err;
-            impl::deserialize(data, data_size, req, err);
-
-            if (err) {
-                build_error(out, header, 0, modbus::errc_t::illegal_data_value);
-                return;
-            }
-            modbus::errc_t modbus_error = modbus::errc_t::no_error;
-            typename Request::response resp = handler_->handle(header.unit, req, modbus_error);
-            if (modbus_error) {
-                build_error(out, header, 0, modbus_error);
-                return;
-            }
-            header.length = static_cast<uint16_t>(resp.length() + 1);
-            impl::serialize(out, header);
-            impl::serialize(out, resp);
-        }
-
-        void build_error(std::ostreambuf_iterator<char> &out, tcp_mbap header, uint8_t function, errc::errc_t error) {
-            header.length = 3;
-            impl::serialize(out, header);
-            impl::serialize_be8(out, function | 0X80);
-            impl::serialize_be8(out, static_cast<uint8_t>(error));
-        }
-    };
+        asio::streambuf buffer;
+        auto out = std::ostreambuf_iterator<char>(&buffer);
+        impl::serialize(out, resp);
+        std::vector<uint8_t> resp_buffer(buffer.size(), 0);
+        std::copy_n(asio::buffers_begin(buffer.data()), buffer.size(), resp_buffer.begin());
+        return resp_buffer;
+    }
 
     struct connection_state {
-        connection_state(tcp::socket client) : client_(std::move(client)){
+        connection_state(tcp::socket client) : client_(std::move(client)) {
         }
+
         tcp::socket client_;
     };
 
-    awaitable<void> handle_connection(tcp::socket client){
-        auto state = std::make_shared<connection_state>(std::move(client));
-
-        std::array<uint8_t, 1024> data;
-        size_t n = co_await state->client_.async_read_some(asio::buffer(data), use_awaitable);
-
-        co_await async_write(state->client_, asio::buffer(data, n), use_awaitable);
+    awaitable<void> timeout(steady_clock::duration tp) {
+        steady_timer timer(co_await asio::this_coro::executor);
+        timer.expires_after(tp);
+        co_await timer.async_wait(use_awaitable);
     }
+
+    std::array<uint8_t, 9> build_error_buffer(tcp_mbap req_header, uint8_t function, errc::errc_t error) {
+        std::array<uint8_t, 9> error_buffer{};
+        tcp_mbap *header = std::launder(reinterpret_cast<tcp_mbap *>(error_buffer.data()));
+        header->length = htons(3);
+        header->transaction = htons(req_header.transaction);
+        header->unit = req_header.unit;
+        error_buffer[7] = function | 0x80;
+        error_buffer[8] = static_cast<uint8_t>(error);
+        return error_buffer;
+    }
+
+    std::array<asio::const_buffer, 2> encode_resp(std::vector<uint8_t> resp, tcp_mbap *header) {
+        header->length = resp.size() + 1;
+        header->length = htons(header->length);
+        header->protocol = htons(header->protocol);
+        header->transaction = htons(header->transaction);
+        std::array<asio::const_buffer, 2> buffs{
+                asio::buffer(std::launder(reinterpret_cast<uint8_t *>(header)), tcp_mbap::size()), asio::buffer(resp)};
+        return buffs;
+    }
+
+    awaitable<void> handle_connection(tcp::socket client, auto &&handler) {
+        auto state = std::make_shared<connection_state>(std::move(client));
+        std::array<uint8_t, 7> header_buffer{};
+        std::array<uint8_t, 1024> request_buffer{};
+        for (;;) {
+            auto result = co_await (
+                    state->client_.async_read_some(asio::buffer(header_buffer, tcp_mbap::size()),
+                                                   asio::as_tuple(asio::use_awaitable)) ||
+                    timeout(60s));
+            if (result.index() == 1) {
+                // Timeout
+                std::cerr << "timeout client: " << state->client_.remote_endpoint() << " Disconnecting!" << std::endl;
+                break;
+            }
+            auto [ec, count] = std::get<0>(result);
+            if (ec) {
+                std::cerr << "error client: " << state->client_.remote_endpoint() << " Disconnecting!" << std::endl;
+                break;
+            }
+            if (count < tcp_mbap::size()) {
+                std::cerr << "packet size to small for header " << count << " " << state->client_.remote_endpoint()
+                          << " Disconnecting!" << std::endl;
+                break;
+            }
+            // Deserialize the request
+            tcp_mbap *header = std::launder(reinterpret_cast<tcp_mbap *>(header_buffer.data()));
+            header->transaction = ntohs(header->transaction);
+            header->protocol = ntohs(header->protocol);
+            header->length = ntohs(header->length);
+            std::cout << *header << std::endl;
+
+            if (header->length < 2) {
+                co_await async_write(state->client_,
+                                     asio::buffer(build_error_buffer(*header, 0, errc::illegal_function), count),
+                                     use_awaitable);
+                continue;
+            }
+
+            // Read the request body
+            auto [request_ec, request_count] = co_await state->client_.async_read_some(
+                    asio::buffer(request_buffer, header->length - 1), asio::as_tuple(asio::use_awaitable));
+            if (request_ec) {
+                std::cerr << "error client: " << state->client_.remote_endpoint() << " Disconnecting!" << std::endl;
+                break;
+            }
+
+            if (request_count < header->length - 1) {
+                std::cerr << "packet size to small for body " << request_count << " "
+                          << state->client_.remote_endpoint() << " Disconnecting!" << std::endl;
+                co_await async_write(state->client_,
+                                     asio::buffer(build_error_buffer(*header, 0, errc::illegal_data_value), count),
+                                     use_awaitable);
+                continue;
+            }
+
+            uint8_t function_code = request_buffer[0];
+            //co_await async_write(state->client_, encode_resp(resp, header), use_awaitable);
+            // Handle the request
+            auto resp = [&]() -> std::expected<std::vector<uint8_t>, modbus::errc_t> {
+                switch (function_code) {
+                    case functions::read_coils:
+                        return handle_request<request::read_coils>(*header, request_buffer.data(), request_count,
+                                                                   handler);
+                    case functions::read_discrete_inputs:;
+                        return handle_request<request::read_discrete_inputs>(*header, request_buffer.data(),
+                                                                             request_count, handler);
+                    case functions::read_holding_registers:;
+                        return handle_request<request::read_holding_registers>(*header, request_buffer.data(),
+                                                                               request_count, handler);
+                    case functions::read_input_registers:;
+                        return handle_request<request::read_input_registers>(*header, request_buffer.data(),
+                                                                             request_count, handler);
+                    case functions::write_single_coil:;
+                        return handle_request<request::write_single_coil>(*header, request_buffer.data(), request_count,
+                                                                          handler);
+                    case functions::write_single_register:;
+                        return handle_request<request::write_single_register>(*header, request_buffer.data(),
+                                                                              request_count, handler);
+                    case functions::write_multiple_coils:;
+                        return handle_request<request::write_multiple_coils>(*header, request_buffer.data(),
+                                                                             request_count, handler);
+                    case functions::write_multiple_registers:;
+                        return handle_request<request::write_multiple_registers>(*header, request_buffer.data(),
+                                                                                 request_count, handler);
+                    default:
+                        return std::unexpected(errc::illegal_function);
+                }
+            }();
+            if (resp) {
+                size_t n = co_await async_write(state->client_, encode_resp(resp.value(), header), use_awaitable);
+                std::cout << "Wrote " << n << "\n";
+            } else {
+                co_await async_write(state->client_,
+                                     asio::buffer(build_error_buffer(*header, 0, resp.error()), count),
+                                     use_awaitable);
+            }
+        }
+        state->client_.close();
+    }
+
 
     template<typename server_handler_t>
     struct server {
@@ -234,7 +222,7 @@ namespace modbus {
                 std::cout << "Connection opened from " << client.remote_endpoint() << "\n";
                 // std::make_shared<Connection<server_handler_t>>(std::move(client), handler_)->start();
 
-                co_spawn(acceptor_.get_executor(), handle_connection(std::move(client)), detached);
+                co_spawn(acceptor_.get_executor(), handle_connection(std::move(client), handler_), detached);
 
                 co_await listen();
             }
@@ -243,6 +231,7 @@ namespace modbus {
         asio::ip::tcp::acceptor acceptor_;
         std::shared_ptr<server_handler_t> handler_;
     };
+
 } // namespace modbus
 
 

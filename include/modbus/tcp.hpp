@@ -34,6 +34,7 @@ namespace modbus {
  * Together with a regular Modbus application data unit (ADU) it forms
  * a Modbus/TCP protocol data unit (PDU).
  */
+#pragma pack(push, 1)
 struct tcp_mbap {
     /// Transaction identifier.
     std::uint16_t transaction;
@@ -48,10 +49,22 @@ struct tcp_mbap {
     std::uint8_t unit;
 
     /// Header size
-    static constexpr int size() {
+    static constexpr size_t size() {
         return 7;
     }
 };
+#pragma pack(pop)
+
+std::ostream& operator<<(std::ostream& out, const tcp_mbap& inst){
+    out << "MODBUS/TCP Header\n"
+        << "Transaction: " << inst.transaction << "\n"
+        << "Protocol: " << inst.protocol << "\n"
+        << "Length: " << inst.length << "\n"
+        << "Unit: " << static_cast<int>(inst.unit) << "\n";
+    return out;
+}
+
+static_assert(sizeof(tcp_mbap) == 7, "tcp_mbap has incorrect size");
 
 /// Modbus/TCP protocol data unit (PDU).
 /**

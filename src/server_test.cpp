@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
     handler->registers_[13] = 13;
     handler->registers_[14] = 14;
 
-    modbus::server<default_handler> server{ctx, handler, 1502};
+    modbus::server<default_handler> server{ctx, handler, 502};
     server.start();
 
     std::cout << "Starting server" << std::endl;
