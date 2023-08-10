@@ -2,7 +2,8 @@
   "version": 6,
   "configurePresets": [
     {
-      "name": "conf-ci"
+      "name": "conf-ci",
+      "binaryDir": "${sourceDir}/build/${presetName}"
     }
   ],
   "buildPresets": [
