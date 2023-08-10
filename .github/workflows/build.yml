@@ -31,4 +31,4 @@ jobs:
           testPreset: 'test-ci'
           testPresetAdditionalArgs: "['--config ${{matrix.build_type}}']"
           configurePreset: 'conf-ci'
-          configurePresetAdditionalArgs: "['-DCMAKE_TOOLCHAIN_FILE=${GITHUB_WORKSPACE}/vcpkg/scripts/buildsystems/vcpkg.cmake']"
+          configurePresetAdditionalArgs: "['-DCMAKE_TOOLCHAIN_FILE=${{ GITHUB_WORKSPACE }}/vcpkg/scripts/buildsystems/vcpkg.cmake']"
