@@ -2,11 +2,7 @@
   "version": 6,
   "configurePresets": [
     {
-      "name": "conf-ci",
-      "generator": "Ninja",
-      "cacheVariables": {
-        "BUILD_SHARED_LIBS": "ON"
-      }
+      "name": "conf-ci"
     }
   ],
   "buildPresets": [
