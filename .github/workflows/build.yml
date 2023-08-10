@@ -35,4 +35,4 @@ jobs:
           buildPreset: 'build-ci'
           testPreset: 'test-ci'
           configurePreset: 'conf-ci'
-          configurePresetAdditionalArgs: "['-DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake CC=${{matrix.c-compiler}} CXX=${{matrix.cxx-compiler}}']"
+          configurePresetAdditionalArgs: "['-DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake', 'CC=${{matrix.c-compiler}}', 'CXX=${{matrix.cxx-compiler}}']"
