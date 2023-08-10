@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <utility>
 #include <boost/asio.hpp>
+#include <span>
 
 namespace modbus {
 

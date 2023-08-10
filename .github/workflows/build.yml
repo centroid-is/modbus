@@ -32,4 +32,4 @@ jobs:
           buildPreset: 'build-ci'
           testPreset: 'test-ci'
           configurePreset: 'conf-ci'
-          configurePresetAdditionalArgs: "['-DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake']"
+          configurePresetAdditionalArgs: "['-DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake']"
