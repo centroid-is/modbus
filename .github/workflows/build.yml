@@ -27,8 +27,6 @@ jobs:
         uses: lukka/run-cmake@v10
         with:
           buildPreset: 'build-ci'
-          buildPresetAdditionalArgs: "['--config ${{matrix.build_type}}']"
           testPreset: 'test-ci'
-          testPresetAdditionalArgs: "['--config ${{matrix.build_type}}']"
           configurePreset: 'conf-ci'
-          configurePresetAdditionalArgs: "['-DCMAKE_TOOLCHAIN_FILE=${{ GITHUB_WORKSPACE }}/vcpkg/scripts/buildsystems/vcpkg.cmake']"
+          configurePresetAdditionalArgs: "['-DCMAKE_TOOLCHAIN_FILE=${{ env.GITHUB_WORKSPACE }}/vcpkg/scripts/buildsystems/vcpkg.cmake']"
