@@ -39,15 +39,6 @@ struct tcp_mbap {
 };
 #pragma pack(pop)
 
-std::ostream& operator<<(std::ostream& out, const tcp_mbap& inst){
-    out << "MODBUS/TCP Header\n"
-        << "Transaction: " << inst.transaction << "\n"
-        << "Protocol: " << inst.protocol << "\n"
-        << "Length: " << inst.length << "\n"
-        << "Unit: " << static_cast<int>(inst.unit) << "\n";
-    return out;
-}
-
 static_assert(sizeof(tcp_mbap) == tcp_mbap::size, "tcp_mbap has incorrect size");
 
 /// Modbus/TCP protocol data unit (PDU).

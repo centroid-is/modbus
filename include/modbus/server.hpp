@@ -113,7 +113,6 @@ namespace modbus {
             }
             // Deserialize the request
             auto header = tcp_mbap::from_bytes(header_buffer);
-            std::cout << header << std::endl;
 
             if (header.length < 2) {
                 co_await async_write(state->client_,
