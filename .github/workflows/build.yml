@@ -29,8 +29,6 @@ jobs:
         with:
           vcpkgGitCommitId: 'fbc868ee5e12e3e81f464104be246ec06553c274'
           vcpkgJsonGlob: 'vcpkg.json'
-        run: |
-          echo "Done"
       - name: build with cmake
         uses: lukka/run-cmake@v10
         with:
