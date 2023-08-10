@@ -49,8 +49,14 @@ struct tcp_mbap {
     std::uint8_t unit;
 
     /// Header size
-    static constexpr size_t size() {
-        return 7;
+    static constexpr size_t size = 7;
+
+    static tcp_mbap* from_bytes(std::span<uint8_t> raw_bytes) {
+        auto header = std::launder(reinterpret_cast<tcp_mbap*>(raw_bytes.data()));
+        header->transaction = ntohs(header->transaction);
+        // header->protocol This is always zero
+        header->length = ntohs(header->length);
+        return header;
     }
 };
 #pragma pack(pop)

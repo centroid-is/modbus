@@ -92,7 +92,7 @@ namespace modbus {
         header->protocol = htons(header->protocol);
         header->transaction = htons(header->transaction);
         std::array<asio::const_buffer, 2> buffs{
-                asio::buffer(std::launder(reinterpret_cast<uint8_t *>(header)), tcp_mbap::size()), asio::buffer(resp)};
+                asio::buffer(std::launder(reinterpret_cast<uint8_t *>(header)), tcp_mbap::size), asio::buffer(resp)};
         return buffs;
     }
 
@@ -102,7 +102,7 @@ namespace modbus {
         std::array<uint8_t, 1024> request_buffer{};
         for (;;) {
             auto result = co_await (
-                    state->client_.async_read_some(asio::buffer(header_buffer, tcp_mbap::size()),
+                    state->client_.async_read_some(asio::buffer(header_buffer, tcp_mbap::size),
                                                    asio::as_tuple(asio::use_awaitable)) ||
                     timeout(60s));
             if (result.index() == 1) {
@@ -115,16 +115,16 @@ namespace modbus {
                 std::cerr << "error client: " << state->client_.remote_endpoint() << " Disconnecting!" << std::endl;
                 break;
             }
-            if (count < tcp_mbap::size()) {
+            if (count < tcp_mbap::size) {
                 std::cerr << "packet size to small for header " << count << " " << state->client_.remote_endpoint()
                           << " Disconnecting!" << std::endl;
                 break;
             }
             // Deserialize the request
-            tcp_mbap *header = std::launder(reinterpret_cast<tcp_mbap *>(header_buffer.data()));
-            header->transaction = ntohs(header->transaction);
-            header->protocol = ntohs(header->protocol);
-            header->length = ntohs(header->length);
+            auto* header = tcp_mbap::from_bytes(header_buffer); //std::launder(reinterpret_cast<tcp_mbap *>(header_buffer.data()));
+            //header->transaction = ntohs(header->transaction);
+            //header->protocol = ntohs(header->protocol);
+            //header->length = ntohs(header->length);
             std::cout << *header << std::endl;
 
             if (header->length < 2) {
@@ -220,7 +220,6 @@ namespace modbus {
                 client.set_option(asio::socket_base::keep_alive(true));
 
                 std::cout << "Connection opened from " << client.remote_endpoint() << "\n";
-                // std::make_shared<Connection<server_handler_t>>(std::move(client), handler_)->start();
 
                 co_spawn(acceptor_.get_executor(), handle_connection(std::move(client), handler_), detached);
 
