@@ -1,0 +1,26 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "conf-ci",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "BUILD_SHARED_LIBS": "ON",
+        "CMAKE_TOOLCHAIN_FILE": "${GITHUB_WORKSPACE}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "build-ci",
+      "configurePreset": "conf-ci"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "test-ci",
+      "hidden": true,
+      "output": {"outputOnFailure": true},
+      "execution": {"noTestsAction": "error", "stopOnFailure": true}
+    }
+}

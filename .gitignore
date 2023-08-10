@@ -1,5 +1,6 @@
 vcpkg-sys*
-build
+build*/
+cmake-build*
 .idea
 vcpkg/
 .vscode

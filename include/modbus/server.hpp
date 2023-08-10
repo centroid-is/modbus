@@ -86,15 +86,6 @@ namespace modbus {
         return error_buffer;
     }
 
-    std::array<asio::const_buffer, 2> encode_resp(std::vector<uint8_t> resp, tcp_mbap *header) {
-        header->length = resp.size() + 1;
-        header->length = htons(header->length);
-        header->protocol = htons(header->protocol);
-        header->transaction = htons(header->transaction);
-        std::array<asio::const_buffer, 2> buffs{
-                asio::buffer(std::launder(reinterpret_cast<uint8_t *>(header)), tcp_mbap::size), asio::buffer(resp)};
-        return buffs;
-    }
 
     awaitable<void> handle_connection(tcp::socket client, auto &&handler) {
         auto state = std::make_shared<connection_state>(std::move(client));
@@ -104,7 +95,7 @@ namespace modbus {
             auto result = co_await (
                     state->client_.async_read_some(asio::buffer(header_buffer, tcp_mbap::size),
                                                    asio::as_tuple(asio::use_awaitable)) ||
-                    timeout(60s));
+                    timeout(5s));
             if (result.index() == 1) {
                 // Timeout
                 std::cerr << "timeout client: " << state->client_.remote_endpoint() << " Disconnecting!" << std::endl;
@@ -121,75 +112,75 @@ namespace modbus {
                 break;
             }
             // Deserialize the request
-            auto* header = tcp_mbap::from_bytes(header_buffer); //std::launder(reinterpret_cast<tcp_mbap *>(header_buffer.data()));
-            //header->transaction = ntohs(header->transaction);
-            //header->protocol = ntohs(header->protocol);
-            //header->length = ntohs(header->length);
-            std::cout << *header << std::endl;
+            auto header = tcp_mbap::from_bytes(header_buffer);
+            std::cout << header << std::endl;
 
-            if (header->length < 2) {
+            if (header.length < 2) {
                 co_await async_write(state->client_,
-                                     asio::buffer(build_error_buffer(*header, 0, errc::illegal_function), count),
+                                     asio::buffer(build_error_buffer(header, 0, errc::illegal_function), count),
                                      use_awaitable);
                 continue;
             }
 
             // Read the request body
             auto [request_ec, request_count] = co_await state->client_.async_read_some(
-                    asio::buffer(request_buffer, header->length - 1), asio::as_tuple(asio::use_awaitable));
+                    asio::buffer(request_buffer, header.length - 1), asio::as_tuple(asio::use_awaitable));
             if (request_ec) {
                 std::cerr << "error client: " << state->client_.remote_endpoint() << " Disconnecting!" << std::endl;
                 break;
             }
 
-            if (request_count < header->length - 1) {
+            if (request_count < header.length - 1) {
                 std::cerr << "packet size to small for body " << request_count << " "
                           << state->client_.remote_endpoint() << " Disconnecting!" << std::endl;
                 co_await async_write(state->client_,
-                                     asio::buffer(build_error_buffer(*header, 0, errc::illegal_data_value), count),
+                                     asio::buffer(build_error_buffer(header, 0, errc::illegal_data_value), count),
                                      use_awaitable);
                 continue;
             }
 
             uint8_t function_code = request_buffer[0];
-            //co_await async_write(state->client_, encode_resp(resp, header), use_awaitable);
             // Handle the request
             auto resp = [&]() -> std::expected<std::vector<uint8_t>, modbus::errc_t> {
                 switch (function_code) {
                     case functions::read_coils:
-                        return handle_request<request::read_coils>(*header, request_buffer.data(), request_count,
+                        return handle_request<request::read_coils>(header, request_buffer.data(), request_count,
                                                                    handler);
-                    case functions::read_discrete_inputs:;
-                        return handle_request<request::read_discrete_inputs>(*header, request_buffer.data(),
+                    case functions::read_discrete_inputs:
+                        return handle_request<request::read_discrete_inputs>(header, request_buffer.data(),
                                                                              request_count, handler);
-                    case functions::read_holding_registers:;
-                        return handle_request<request::read_holding_registers>(*header, request_buffer.data(),
+                    case functions::read_holding_registers:
+                        return handle_request<request::read_holding_registers>(header, request_buffer.data(),
                                                                                request_count, handler);
-                    case functions::read_input_registers:;
-                        return handle_request<request::read_input_registers>(*header, request_buffer.data(),
+                    case functions::read_input_registers:
+                        return handle_request<request::read_input_registers>(header, request_buffer.data(),
                                                                              request_count, handler);
-                    case functions::write_single_coil:;
-                        return handle_request<request::write_single_coil>(*header, request_buffer.data(), request_count,
+                    case functions::write_single_coil:
+                        return handle_request<request::write_single_coil>(header, request_buffer.data(), request_count,
                                                                           handler);
-                    case functions::write_single_register:;
-                        return handle_request<request::write_single_register>(*header, request_buffer.data(),
+                    case functions::write_single_register:
+                        return handle_request<request::write_single_register>(header, request_buffer.data(),
                                                                               request_count, handler);
-                    case functions::write_multiple_coils:;
-                        return handle_request<request::write_multiple_coils>(*header, request_buffer.data(),
+                    case functions::write_multiple_coils:
+                        return handle_request<request::write_multiple_coils>(header, request_buffer.data(),
                                                                              request_count, handler);
-                    case functions::write_multiple_registers:;
-                        return handle_request<request::write_multiple_registers>(*header, request_buffer.data(),
+                    case functions::write_multiple_registers:
+                        return handle_request<request::write_multiple_registers>(header, request_buffer.data(),
                                                                                  request_count, handler);
                     default:
                         return std::unexpected(errc::illegal_function);
                 }
             }();
             if (resp) {
-                size_t n = co_await async_write(state->client_, encode_resp(resp.value(), header), use_awaitable);
+                header.length = resp.value().size() + 1;
+                auto header_bytes = header.to_bytes();
+                std::array<asio::const_buffer, 2> buffs{
+                        asio::buffer(header_bytes), asio::buffer(resp.value())};
+                size_t n = co_await async_write(state->client_, buffs, use_awaitable);
                 std::cout << "Wrote " << n << "\n";
             } else {
                 co_await async_write(state->client_,
-                                     asio::buffer(build_error_buffer(*header, 0, resp.error()), count),
+                                     asio::buffer(build_error_buffer(header, 0, resp.error()), count),
                                      use_awaitable);
             }
         }
@@ -219,7 +210,7 @@ namespace modbus {
                 client.set_option(asio::ip::tcp::no_delay(true));
                 client.set_option(asio::socket_base::keep_alive(true));
 
-                std::cout << "Connection opened from " << client.remote_endpoint() << "\n";
+                std::cout << "Connection opened from " << client.remote_endpoint() << std::endl;
 
                 co_spawn(acceptor_.get_executor(), handle_connection(std::move(client), handler_), detached);
 
