@@ -21,7 +21,7 @@ jobs:
         include:
         - os: ubuntu-latest
           c-compiler: gcc-12
-          c++-compiler: g++-12
+          cxx-compiler: g++-12
     steps:
       - uses: actions/checkout@v3
       - name: Restore artifacts, or setup vcpkg
@@ -35,4 +35,4 @@ jobs:
           buildPreset: 'build-ci'
           testPreset: 'test-ci'
           configurePreset: 'conf-ci'
-          configurePresetAdditionalArgs: "['-DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake CC=${{matrix.c-compiler}} CXX=${{matrix.c++-compiler}}']"
+          configurePresetAdditionalArgs: "['-DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake CC=${{matrix.c-compiler}} CXX=${{matrix.cxx-compiler}}']"
