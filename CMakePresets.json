@@ -5,7 +5,7 @@
       "name": "conf-ci",
       "generator": "Ninja",
       "cacheVariables": {
-        "BUILD_SHARED_LIBS": "ON",
+        "BUILD_SHARED_LIBS": "ON"
       }
     }
   ],
