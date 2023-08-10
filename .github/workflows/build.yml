@@ -18,6 +18,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         build_type: [debug, release]
+        include:
+        - os: ubuntu-latest
+          c-compiler: gcc-12
+          c++-compiler: g++-12
     steps:
       - uses: actions/checkout@v3
       - name: Restore artifacts, or setup vcpkg
@@ -25,11 +29,6 @@ jobs:
         with:
           vcpkgGitCommitId: 'fbc868ee5e12e3e81f464104be246ec06553c274'
           vcpkgJsonGlob: 'vcpkg.json'
-      - name: set ubuntu-latest gcc
-        if: matrix.os == 'ubuntu-latest'
-        env:
-          CC: gcc-12
-          CXX: g++-12
         run: |
           echo "Done"
       - name: build with cmake
@@ -38,4 +37,4 @@ jobs:
           buildPreset: 'build-ci'
           testPreset: 'test-ci'
           configurePreset: 'conf-ci'
-          configurePresetAdditionalArgs: "['-DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake']"
+          configurePresetAdditionalArgs: "['-DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake CC=${{matrix.c-compiler}} CXX=${{matrix.c++-compiler}}']"
