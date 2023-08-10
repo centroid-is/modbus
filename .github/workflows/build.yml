@@ -20,8 +20,8 @@ jobs:
         build_type: [debug, release]
         include:
         - os: ubuntu-latest
-          c-compiler: gcc-12
-          cxx-compiler: g++-12
+          c-compiler: /usr/bin/gcc-12
+          cxx-compiler: /usr/bin/g++-12
     steps:
       - uses: actions/checkout@v3
       - name: Restore artifacts, or setup vcpkg
