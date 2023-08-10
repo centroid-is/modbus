@@ -26,16 +26,10 @@ jobs:
         with:
           vcpkgGitCommitId: 'fbc868ee5e12e3e81f464104be246ec06553c274'
           vcpkgJsonGlob: 'vcpkg.json'
-      - name: ls
-        run: |
-          ls -la
-      - name: pwd
-        run: |
-          pwd
       - name: build with cmake
         uses: lukka/run-cmake@v10
         with:
           buildPreset: 'build-ci'
           testPreset: 'test-ci'
           configurePreset: 'conf-ci'
-          configurePresetAdditionalArgs: "['-DCMAKE_TOOLCHAIN_FILE=${{ github.GITHUB_WORKSPACE }}/vcpkg/scripts/buildsystems/vcpkg.cmake']"
+          configurePresetAdditionalArgs: "['-DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake']"
