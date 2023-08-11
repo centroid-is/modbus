@@ -80,7 +80,6 @@ struct default_handler {
         }
         return resp;
     }
-//private:
     std::vector<std::uint16_t> registers_;
     std::vector<bool> coils_;
 };

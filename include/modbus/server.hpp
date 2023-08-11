@@ -1,5 +1,7 @@
 #pragma once
 
+#define BOOST_ASIO_ENABLE_HANDLER_TRACKING 1
+
 #include <string>
 #include <array>
 #include <cstdint>
@@ -21,6 +23,7 @@
 #include "error.hpp"
 #include "impl/serialize.hpp"
 #include "impl/deserialize.hpp"
+
 
 namespace asio = boost::asio;
 namespace ip = asio::ip;
@@ -95,7 +98,7 @@ namespace modbus {
             auto result = co_await (
                     state->client_.async_read_some(asio::buffer(header_buffer, tcp_mbap::size),
                                                    asio::as_tuple(asio::use_awaitable)) ||
-                    timeout(5s));
+                    timeout(60s));
             if (result.index() == 1) {
                 // Timeout
                 std::cerr << "timeout client: " << state->client_.remote_endpoint() << " Disconnecting!" << std::endl;
@@ -183,7 +186,10 @@ namespace modbus {
                                      use_awaitable);
             }
         }
-        state->client_.close();
+        //state->client_.close();
+        steady_timer wait_a_minute(co_await asio::this_coro::executor);
+        wait_a_minute.expires_after(5min);
+        co_await wait_a_minute.async_wait(asio::use_awaitable);
     }
 
 

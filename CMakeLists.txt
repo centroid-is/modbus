@@ -18,19 +18,18 @@ option(BUILD_TESTS "Indicates whether tests should be built." ON)
 add_feature_info("BUILD_TESTS" BUILD_TESTS "Indicates whether tests should be built.")
 
 add_library(modbus
-  STATIC
   src/client.cpp
-  src/error.cpp
-  src/server.cpp)
+  src/error.cpp)
 
 target_link_libraries(modbus PRIVATE Boost::boost)
 target_include_directories(modbus PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 
-add_executable(modbus_test src/test.cpp)
-target_link_libraries(modbus_test PRIVATE modbus Boost::boost)
+add_executable(client_example examples/client_example.cpp)
+target_link_libraries(client_example PRIVATE modbus Boost::boost)
 
-add_executable(modbus_server_test src/server_test.cpp)
-target_link_libraries(modbus_server_test PRIVATE modbus Boost::boost)
+add_executable(server_example examples/server_example.cpp)
+target_link_libraries(server_example PRIVATE modbus Boost::boost)
+target_compile_definitions(server_example PRIVATE BOOST_ASIO_ENABLE_HANDLER_TRACKING)
 
 if(BUILD_TESTS)
   add_subdirectory(tests)
