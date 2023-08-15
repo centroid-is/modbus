@@ -12,12 +12,20 @@ A C++23 modbus library using Boost ASIO.
 
 ## Client example
 '''cpp
+#include <modbus/client.hpp>
 
+int main(){
+    return 0;
+}
 '''
 
 ## Server example
 '''cpp
+#include <modbus/server.hpp>
 
+int main(){
+    return 0;
+}
 '''
 
 # Modbus specification information
