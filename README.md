@@ -11,22 +11,22 @@ A C++23 modbus library using Boost ASIO.
 # Using the library
 
 ## Client example
-'''cpp
+```cpp
 #include <modbus/client.hpp>
 
 int main(){
     return 0;
 }
-'''
+```
 
 ## Server example
-'''cpp
+```cpp
 #include <modbus/server.hpp>
 
 int main(){
     return 0;
 }
-'''
+```
 
 # Modbus specification information
 - Tcp implementation guide [https://www.modbus.org/docs/Modbus_Messaging_Implementation_Guide_V1_0b.pdf](https://www.modbus.org/docs/Modbus_Messaging_Implementation_Guide_V1_0b.pdf)
