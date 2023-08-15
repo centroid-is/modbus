@@ -24,7 +24,6 @@
 
 #pragma once
 #include <system_error>
-#include <iostream>
 
 namespace modbus {
 
