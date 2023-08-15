@@ -141,32 +141,32 @@ namespace modbus {
                 continue;
             }
 
-            uint8_t function_code = request_buffer[0];
+            auto function_code = static_cast<function_t>(request_buffer[0]);
             // Handle the request
             auto resp = [&]() -> std::expected<std::vector<uint8_t>, modbus::errc_t> {
                 switch (function_code) {
-                    case functions::read_coils:
+                    case function_t::read_coils:
                         return handle_request<request::read_coils>(header, request_buffer.data(), request_count,
                                                                    handler);
-                    case functions::read_discrete_inputs:
+                    case function_t::read_discrete_inputs:
                         return handle_request<request::read_discrete_inputs>(header, request_buffer.data(),
                                                                              request_count, handler);
-                    case functions::read_holding_registers:
+                    case function_t::read_holding_registers:
                         return handle_request<request::read_holding_registers>(header, request_buffer.data(),
                                                                                request_count, handler);
-                    case functions::read_input_registers:
+                    case function_t::read_input_registers:
                         return handle_request<request::read_input_registers>(header, request_buffer.data(),
                                                                              request_count, handler);
-                    case functions::write_single_coil:
+                    case function_t::write_single_coil:
                         return handle_request<request::write_single_coil>(header, request_buffer.data(), request_count,
                                                                           handler);
-                    case functions::write_single_register:
+                    case function_t::write_single_register:
                         return handle_request<request::write_single_register>(header, request_buffer.data(),
                                                                               request_count, handler);
-                    case functions::write_multiple_coils:
+                    case function_t::write_multiple_coils:
                         return handle_request<request::write_multiple_coils>(header, request_buffer.data(),
                                                                              request_count, handler);
-                    case functions::write_multiple_registers:
+                    case function_t::write_multiple_registers:
                         return handle_request<request::write_multiple_registers>(header, request_buffer.data(),
                                                                                  request_count, handler);
                     default:

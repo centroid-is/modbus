@@ -1,4 +1,5 @@
 // Copyright (c) 2017, Fizyr (https://fizyr.com)
+// Copyright (c) 2023, Skaginn3x (https://skaginn3x.com)
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -50,7 +51,7 @@ namespace request {
         using response = response::read_coils;
 
         /// The function code.
-        static constexpr std::uint8_t function = functions::read_coils;
+        static constexpr function_t function = function_t::read_coils;
 
         /// The address of the first coil/register to read from.
         std::uint16_t address;
@@ -68,7 +69,7 @@ namespace request {
         using response = response::read_discrete_inputs;
 
         /// The function code.
-        static constexpr std::uint8_t function = functions::read_discrete_inputs;
+        static constexpr function_t function = function_t::read_discrete_inputs;
 
         /// The address of the first coil/register to read from.
         std::uint16_t address;
@@ -86,7 +87,7 @@ namespace request {
         using response = response::read_holding_registers;
 
         /// The function code.
-        static constexpr std::uint8_t function = functions::read_holding_registers;
+        static constexpr function_t function = function_t::read_holding_registers;
 
         /// The address of the first coil/register to read from.
         std::uint16_t address;
@@ -104,7 +105,7 @@ namespace request {
         using response = response::read_input_registers;
 
         /// The function code.
-        static constexpr std::uint8_t function = functions::read_input_registers;
+        static constexpr function_t function = function_t::read_input_registers;
 
         /// The address of the first coil/register to read from.
         std::uint16_t address;
@@ -122,7 +123,7 @@ namespace request {
         using response = response::write_single_coil;
 
         /// The function code.
-        static constexpr std::uint8_t function = functions::write_single_coil;
+        static constexpr function_t function = function_t::write_single_coil;
 
         /// The address of the coil to write to.
         std::uint16_t address;
@@ -140,7 +141,7 @@ namespace request {
         using response = response::write_single_register;
 
         /// The function code.
-        static constexpr std::uint8_t function = functions::write_single_register;
+        static constexpr function_t function = function_t::write_single_register;
 
         /// The address of the register to write to.
         std::uint16_t address;
@@ -158,7 +159,7 @@ namespace request {
         using response = response::write_multiple_coils;
 
         /// The function code.
-        static constexpr std::uint8_t function = functions::write_multiple_coils;
+        static constexpr function_t function = function_t::write_multiple_coils;
 
         /// The address of the first coil to write to.
         std::uint16_t address;
@@ -176,7 +177,7 @@ namespace request {
         using response = response::write_multiple_registers;
 
         /// The function code.
-        static constexpr std::uint8_t function = functions::write_multiple_registers;
+        static constexpr function_t function = function_t::write_multiple_registers;
 
         /// The address of the first register to write to.
         std::uint16_t address;
@@ -194,7 +195,7 @@ namespace request {
         using response = response::mask_write_register;
 
         /// The function code.
-        static constexpr std::uint8_t function = functions::mask_write_register;
+        static constexpr function_t function = function_t::mask_write_register;
 
         /// The address of the register to write to.
         std::uint16_t address;
@@ -209,5 +210,8 @@ namespace request {
         std::size_t length() const { return 7; }
     };
 
+    using requests = std::variant<read_coils, read_discrete_inputs, read_holding_registers, read_input_registers,
+                                  write_single_coil, write_single_register, write_multiple_coils,
+                                  write_multiple_registers, mask_write_register>;
 } // namespace request
 } // namespace modbus

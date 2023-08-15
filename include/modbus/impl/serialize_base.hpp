@@ -44,6 +44,15 @@ namespace impl {
         return 1;
     }
 
+    /// Serialize an function_t in big endian.
+    /**
+	 * \return The number of bytes written.
+	 */
+    template <typename OutputIterator> std::size_t serialize_be8(OutputIterator &out, function_t value) {
+        *out++ = static_cast<uint8_t>(value);
+        return 1;
+    }
+
     /// Serialize an uint16_t in big endian.
     /**
 	 * \return The number of bytes written.

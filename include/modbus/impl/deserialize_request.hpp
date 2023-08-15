@@ -26,18 +26,31 @@
 
 #include "deserialize_base.hpp"
 #include "modbus/request.hpp"
+#include <expected>
 
 namespace modbus {
 namespace impl {
 
     /// Deserialize a read_coils/read discrete inputs/read input registers/read holding registers request.
-    template<typename InputIterator, typename Adu>
-    InputIterator deserialize(InputIterator start, std::size_t length, Adu & adu, std::error_code & error) {
-        if (!check_length(length, 5, error)) return start;
-        start = deserialize_function (start, adu.function, error);
-        start = deserialize_be16(start, adu.address);
-        start = deserialize_be16(start, adu.count);
-        return start;
+    std::expected<request::requests, std::error_code> deserialize(std::span<std::byte> data, function_t const expected_function) {
+        // Deserialize the function
+        auto function = deserialize_function(data.begin(), expected_function);
+
+        std::visit([&](auto & adu) {
+            if constexpr (!std::is_same_v<std::monostate, decltype(adu.function)>){
+                if (!check_length(length, 5, error)) return start;
+                adu.function = deserialize_function (start, adu.function, error);
+                if (error){
+                    return start;
+                }
+                adu.address = deserialize_be16(start);
+                adu.count = deserialize_be16(start);
+                return start;
+            } else {
+                error = errc_t::illegal_function;
+                return start;
+            }
+            }, adu);
     }
 
     /// Deserialize a write_single_coil request.

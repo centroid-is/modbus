@@ -1,4 +1,5 @@
 // Copyright (c) 2017, Fizyr (https://fizyr.com)
+// Copyright (c) 2023, Skaginn3x (https://skaginn3x.com)
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -27,9 +28,7 @@
 #include <cstdint>
 
 namespace modbus {
-
-struct functions {
-    enum function_t {
+    enum struct function_t {
         read_coils = 0x01,
         read_discrete_inputs = 0x02,
         read_holding_registers = 0x03,
@@ -49,6 +48,5 @@ struct functions {
         read_write_multiple_registers = 0x17,
         read_fifo_record = 0x18,
     };
-};
 
 } // namespace modbus

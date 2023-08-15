@@ -24,79 +24,57 @@
 
 #pragma once
 #include <cstdint>
+#include <cassert>
 #include <string>
 #include <vector>
-
+#include <expected>
 #include <system_error>
 
+
+//TODO: This include is only here for ntohs
+// Find a better cross platform way to include this.
+#include <boost/asio.hpp>
+
 #include "modbus/error.hpp"
+#include "modbus/functions.hpp"
+
 
 namespace modbus {
 namespace impl {
 
     /// Check if length is sufficient.
-    /**
-	 * Also sets the error code to message_size_mismatch if the size is insufficient,
-	 * but only if the error code is empty.
-	 *
-	 * \return False if the size is not enough or if error code is not empty.
-	 */
-    inline bool check_length(std::size_t actual, std::size_t needed, std::error_code &error) {
-        if (error) {
-            return false;
-        } else if (actual < needed) {
-            error = modbus_error(errc::message_size_mismatch);
-            return false;
-        } else {
-            return true;
-        }
+    [[nodiscard]] inline std::error_code check_length(std::size_t actual, std::size_t needed) {
+        return actual < needed ? modbus_error(errc::message_size_mismatch) : std::error_code{};
     }
 
     /// Convert a uint16 Modbus boolean to a bool.
-    /**
-	 * Sets error to invalid_value if input was not a valid Modbus boolean and error was empty.
-	 *
-	 * \return The parsed boolean.
-	 */
-    inline bool uint16_to_bool(uint16_t value, std::error_code &error) {
+    inline std::expected<bool, std::error_code> uint16_to_bool(uint16_t value) {
         if (value == 0xff00)
             return true;
-        if (value != 0x0000 && !error)
-            error = std::error_code(errc::invalid_value, modbus_category());
+        if (value != 0x0000)
+            return std::unexpected(std::error_code(errc::invalid_value, modbus_category()));
         return false;
     }
 
     /// Deserialize an uint8_t in big endian.
-    /**
-	 * \return Iterator past the read sequence.
-	 */
-    template <typename InputIterator> InputIterator deserialize_be8(InputIterator start, std::uint8_t &out) {
-        out = *start++;
-        return start;
+    [[nodiscard]] inline uint8_t deserialize_be8(std::span<std::byte> data) {
+        assert(!data.empty());
+        return static_cast<uint8_t>(data[0]);
     }
 
     /// Deserialize an uint16_t in big endian.
-    /**
-	 * \return Iterator past the read sequence.
-	 */
-    template <typename InputIterator> InputIterator deserialize_be16(InputIterator start, std::uint16_t &out) {
-        std::uint16_t result;
-        result = *start++ << 8;
-        result |= *start++ << 0;
-        out = result;
-        return start;
+    [[nodiscard]] inline uint16_t deserialize_be16(std::span<std::byte> data) {
+        assert(data.size() >= 2);
+        return ntohs(*reinterpret_cast<std::uint16_t const *>(data.data()));
     }
 
     /// Deserialize a Modbus boolean.
     /**
 	 * \return Iterator past the read sequence.
 	 */
-    template <typename InputIterator>
-    InputIterator deserialize_bool(InputIterator start, bool &out, std::error_code &error) {
-        std::uint16_t word = 0xbeef;
-        deserialize_be16(start, word);
-        out = uint16_to_bool(word, error);
-        return start;
+    std::expected<bool, std::error_code> deserialize_bool(std::span<std::byte> data) {
+        std::uint16_t word = deserialize_be16(data);
+        return uint16_to_bool(word);
     }
 
     /// Parse and check the function code.
@@ -108,12 +86,11 @@ namespace impl {
 	 *
 	 * \return The input iterator after parsing the function code.
 	 */
-    template <typename InputIterator>
-    InputIterator deserialize_function(InputIterator start, std::uint8_t expected_function, std::error_code &error) {
-        std::uint8_t function;
-        start = deserialize_be8(start, function);
-        if (function != expected_function && !error) error = modbus_error(errc::unexpected_function_code);
-        return start;
+    std::expected<function_t, std::error_code> deserialize_function(std::span<std::byte> data, function_t expected_function) {
+        assert(!data.empty());
+        auto function = static_cast<function_t>(data[0]);
+        if (function != expected_function) return std::unexpected(modbus_error(errc::unexpected_function_code));
+        return function;
     }
 
 
@@ -128,8 +105,9 @@ namespace impl {
     template <typename InputIterator>
     InputIterator deserialize_bit_list(InputIterator start, std::size_t length, std::size_t bit_count,
                                        std::vector<bool> &values, std::error_code &error) {
+        if (error) return start;
         // Check available data length.
-        if (!check_length(length, (bit_count + 7) / 8, error))
+        if (!check_length(length, (bit_count + 7) / 8))
             return start;
 
         // Read bits.
@@ -158,8 +136,9 @@ namespace impl {
     template <typename InputIterator>
     InputIterator deserialize_word_list(InputIterator start, std::size_t length, std::size_t word_count,
                                         std::vector<std::uint16_t> &values, std::error_code &error) {
+        if (error) return start;
         // Check available data length.
-        if (!check_length(length, word_count * 2, error))
+        if (!check_length(length, word_count * 2))
             return start;
 
         // Read words.
@@ -183,7 +162,8 @@ namespace impl {
     template <typename InputIterator>
     InputIterator deserialize_bits_request(InputIterator start, std::size_t length, std::vector<bool> &values,
                                            std::error_code &error) {
-        if (!check_length(length, 3, error))
+        if (error) return start;
+        if (!check_length(length, 3))
             return start;
 
         // Read word and byte count.
@@ -213,7 +193,8 @@ namespace impl {
     template <typename InputIterator>
     InputIterator deserialize_bits_response(InputIterator start, std::size_t length, std::vector<bool> &values,
                                             std::error_code &error) {
-        if (!check_length(length, 3, error))
+        if (error)  return start;
+        if (!check_length(length, 3))
             return start;
 
         // Read word and byte count.
@@ -234,7 +215,8 @@ namespace impl {
     template <typename InputIterator>
     InputIterator deserialize_words_request(InputIterator start, std::size_t length, std::vector<std::uint16_t> &values,
                                             std::error_code &error) {
-        if (!check_length(length, 3, error))
+        if (error) return start;
+        if (!check_length(length, 3))
             return start;
 
         // Read word and byte count.
@@ -264,7 +246,8 @@ namespace impl {
     template <typename InputIterator>
     InputIterator deserialize_words_response(InputIterator start, std::size_t length,
                                              std::vector<std::uint16_t> &values, std::error_code &error) {
-        if (!check_length(length, 3, error))
+        if (error) return start;
+        if (!check_length(length, 3))
             return start;
 
         // Read word and byte count.

@@ -18,7 +18,6 @@ option(BUILD_TESTS "Indicates whether tests should be built." ON)
 add_feature_info("BUILD_TESTS" BUILD_TESTS "Indicates whether tests should be built.")
 
 add_library(modbus
-  src/client.cpp
   src/error.cpp)
 
 target_link_libraries(modbus PRIVATE Boost::boost)

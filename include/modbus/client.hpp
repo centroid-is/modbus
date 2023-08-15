@@ -1,4 +1,5 @@
 // Copyright (c) 2017, Fizyr (https://fizyr.com)
+// Copyright (c) 2023, Skaginn3x (https://Skaginn3x.com)
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -27,7 +28,7 @@
 #include <atomic>
 #include <cstdint>
 #include <functional>
-#include <map>
+#include <unordered_map>
 #include <string>
 
 #include <boost/asio.hpp>
@@ -58,10 +59,6 @@ namespace modbus {
 /// A connection to a Modbus server.
     class client {
     public:
-        template<typename T>
-        using Callback = std::function<void(tcp_mbap const &header, T const &response, std::error_code const &)>;
-        typedef asio::ip::tcp tcp;
-
         /// Callback to invoke for IO errors that cants be linked to a specific transaction.
         /**
          * Additionally the connection will be closed and every transaction callback will be called with an EOF error.
@@ -70,13 +67,12 @@ namespace modbus {
 
     protected:
         /// Low level message handler.
-        using Handler = std::function<std::uint8_t const *(std::uint8_t const *start, std::size_t size,
-                                                           tcp_mbap const &header, std::error_code error)>;
+        using Callback = std::function<void(std::error_code const&, response::responses const&, tcp_mbap const&)>;
 
         /// Struct to hold transaction details.
         struct transaction_t {
             std::uint8_t function;
-            Handler handler;
+            Callback handler;
         };
 
         /// Strand to use to prevent concurrent handler execution.
@@ -89,21 +85,21 @@ namespace modbus {
         asio::streambuf read_buffer;
 
         /// Transaction table to keep track of open transactions.
-        std::map<int, transaction_t> transactions;
+        std::unordered_map<int, transaction_t> transactions;
 
         /// Next transaction ID.
         std::uint16_t next_id = 0;
 
         /// Track connected state of client.
-        bool _connected;
+        bool _connected{false};
 
         /// Socket options
-        asio::ip::tcp::no_delay no_delay_option;
-        asio::socket_base::keep_alive keep_alive_option;
+        asio::ip::tcp::no_delay no_delay_option{true};
+        asio::socket_base::keep_alive keep_alive_option{true};
 
     public:
         /// Construct a client.
-        client(asio::io_context &io_context /*< The IO context to use.*/);
+        client(asio::io_context &io_context /*< The IO context to use.*/) : ctx{io_context}, socket{io_context} {}
 
         /// Get the IO executor used by the client.
         tcp::socket::executor_type io_executor() { return socket.get_executor(); };
@@ -131,14 +127,17 @@ namespace modbus {
                     }
 
                     _connected = true;
-                    set_sock_options();
+
+                    // Set socket options as recommended by the modbus spec.
+                    socket.set_option(no_delay_option);
+                    socket.set_option(keep_alive_option);
 
                     for (auto &transaction: transactions) {
-                        transaction.second.handler(nullptr, 0, {}, make_error_code(asio::error::operation_aborted));
+                        transaction.second.handler(make_error_code(asio::error::operation_aborted), std::monostate{}, {});
                     }
                     transactions.clear();
-                    auto handler = std::bind(&client::on_read, this, std::placeholders::_1, std::placeholders::_2);
-                    socket.async_read_some(read_buffer.prepare(1024), handler);
+
+                    co_spawn(ctx, process_loop(), asio::detached);
 
                     self.complete({});
 
@@ -147,11 +146,19 @@ namespace modbus {
             }, token, ctx);
         }
 
+
         /// Disconnect from the server.
         /**
          * Any remaining transaction callbacks will be invoked with an EOF error.
          */
-        void close();
+        void close() {
+            if (socket.is_open()) {
+                // Shutdown and close socket.
+                socket.shutdown(boost::asio::socket_base::shutdown_type::shutdown_both);
+                socket.close();
+            }
+            _connected = false;
+        }
 
         /// Reset the client.
         /**
@@ -245,24 +252,124 @@ namespace modbus {
         }
 
     protected:
+        asio::awaitable<void> process_loop() {
+            for (;;) {
+                auto [err, bytes_transferred] = co_await socket.async_read_some(read_buffer.prepare(1024),
+                                                                                asio::as_tuple(asio::use_awaitable));
+                if (err) {
+                    if (on_io_error)
+                        on_io_error(err);
+                    co_return;
+                }
 
-        /// Set socket options
-        void set_sock_options();
+                read_buffer.commit(bytes_transferred);
 
-        /// Called when the socket finished a read operation.
-        void on_read(std::error_code const &error, ///<[in] The error that occured, if any.
-                     std::size_t bytes_transferred ///<[in] The amount of bytes read from the socket.
-        );
-
+                // Parse and process all complete messages in the buffer.
+                while (process_message());
+            }
+        }
 
         /// Allocate a transaction in the transaction table.
-        std::uint16_t allocate_transaction(std::uint8_t function, Handler handler);
+        std::uint16_t allocate_transaction(std::uint8_t function, Callback handler) {
+            std::uint16_t id = ++next_id;
+            transactions.insert({id, {function, std::move(handler)}});
+            return id;
+        }
 
+        // Make a handler that deserializes a messages and passes it to the user callback.
+        uint8_t const* handle(auto &&callback, std::uint8_t const *start, std::size_t length, tcp_mbap const &header, std::error_code error) {
+            response::responses response;
+
+            std::uint8_t const *current = start;
+            std::uint8_t const *end = start + length;
+
+            // Pass errors to callback.
+            if (error) {
+                callback(error, response, header);
+                return current;
+            }
+
+            // Make sure the message contains at least a function code.
+            if (length < 1) {
+                callback(modbus_error(errc::message_size_mismatch), response, header);
+                return current;
+            }
+
+            uint8_t modbus_func = *current;
+
+            // Function codes 128 and above are exception responses.
+            if (modbus_func >= 128) {
+                callback(modbus_error(length >= 2 ? errc_t(start[1]) : errc::message_size_mismatch), response, header);
+                return current;
+            }
+
+            // Try to deserialize the PDU.
+            current = impl::deserialize(current, end - current, response, error);
+            if (error) {
+                callback(error, response, header);
+                return current;
+            }
+
+            // Check response length consistency.
+            // Length from the MBAP header includes the unit ID (1 byte) which is part of the MBAP header, not the response ADU.
+            if (current - start != header.length - 1) {
+                callback(modbus_error(errc::message_size_mismatch), response, header);
+                return current;
+            }
+
+            callback(error, response, header);
+            return current;
+        }
         /// Parse and process a message from the read buffer.
         /**
          * \return True if a message was parsed succesfully, false if there was not enough data.
          */
-        bool process_message();
+        bool process_message() {
+            /// Modbus/TCP MBAP header is 7 bytes.
+            if (read_buffer.size() < 7)
+                return false;
+
+            uint8_t const *data = asio::buffer_cast<uint8_t const *>(read_buffer.data());
+
+            std::error_code error;
+            tcp_mbap header;
+
+            data = impl::deserialize(data, read_buffer.size(), header, error);
+
+            // Handle deserialization errors in TCP MBAP.
+            // Cant send an error to a specific transaction and can't continue to read from the connection.
+            if (error) {
+                if (on_io_error)
+                    on_io_error(error);
+                return false;
+            }
+
+            // Ensure entire message is in buffer.
+            if (read_buffer.size() < std::size_t(6 + header.length))
+                return false;
+
+            auto transaction = transactions.find(header.transaction);
+            if (transaction == transactions.end()) {
+                // TODO: Transaction not found. Possibly call on_io_error?
+                std::cerr << "Modbus client.cpp transaction not found!" << std::endl;
+                return false;
+            }
+            auto callback = transaction->second.handler;
+            uint8_t stored_function = transaction->second.function;
+            uint8_t recv_function = data[0];
+            if (recv_function != stored_function){
+                // TODO: Make this better
+                throw std::runtime_error("Modbus client.cpp function mismatch!");
+            }
+
+            handle(callback, data, header.length -1, header, error);
+
+            transactions.erase(transaction);
+            // Remove read data and handled transaction.
+            read_buffer.consume(6 + header.length);
+
+            return true;
+        }
 
         /// Send a Modbus request to the server.
         template<typename CompletionToken>
@@ -271,79 +378,37 @@ namespace modbus {
                           CompletionToken &&token) {
             using response_t = std::remove_cvref_t<decltype(request)>::response;
             return async_compose < CompletionToken, void(
-                    std::error_code const &, response_t const&, tcp_mbap const &)>([&](
+                    std::error_code const, response_t const&, tcp_mbap const &)>([&](
                     auto &self) {
-                co_spawn(ctx, [&, self = std::move(self), request = std::move(request)]() mutable -> asio::awaitable<void> {
-                    auto handler = make_handler<response_t>(
-                            [](tcp_mbap const &header, response_t const &response, std::error_code const &error) {
-                                //self.complete(error, response, header);
-                            });
-                    tcp_mbap resp_header;
-                    resp_header.transaction = allocate_transaction(request.function, handler);
-                    resp_header.protocol = 0;
-                    resp_header.length = request.length() + 1;
-                    resp_header.unit = unit;
+                co_spawn(ctx,
+                         [&, self = std::move(self), request = std::move(request)]() mutable -> asio::awaitable<void> {
+                             // auto handler = make_handler<response_t>(
+                             //         [self = std::move(self)](std::error_code const error, response_t const &response,
+                             //                                  tcp_mbap const &header) {
+                             //             self.complete(error, response, header);
+                             //             std::cout << "Modbus client.cpp response: " << std::endl;
+                             //         });
+                             tcp_mbap resp_header;
+                             resp_header.transaction = allocate_transaction(request.function, [](auto&& ...args) -> uint8_t* {
+                                return new uint8_t[10];
+                             });
+                             resp_header.protocol = 0;
+                             resp_header.length = request.length() + 1;
+                             resp_header.unit = unit;
 
-                    auto header_encoded = resp_header.to_bytes();
-                    asio::streambuf write_buffer{};
-                    auto out = std::ostreambuf_iterator<char>(&write_buffer);
-                    impl::serialize(out, request);
+                             auto header_encoded = resp_header.to_bytes();
+                             asio::streambuf write_buffer{};
+                             auto out = std::ostreambuf_iterator<char>(&write_buffer);
+                             impl::serialize(out, request);
 
-                    std::vector<asio::const_buffer> buffers{
-                            {asio::buffer(header_encoded), asio::buffer(write_buffer.data())}};
+                             std::vector<asio::const_buffer> buffers{
+                                     {asio::buffer(header_encoded), asio::buffer(write_buffer.data())}};
 
-                    co_await asio::async_write(socket, buffers, asio::use_awaitable);
-                }, asio::detached);
+                             co_await asio::async_write(socket, buffers, asio::use_awaitable);
+                         }, asio::detached);
             }, token, ctx);
         }
     };
 
-// Make a handler that deserializes a messages and passes it to the user callback.
-    template<typename T>
-    std::function<std::uint8_t const *(std::uint8_t const *start, std::size_t length, tcp_mbap const &header,
-                                       std::error_code error)>
-    make_handler(auto &&callback) {
-        return [callback](std::uint8_t const *start, std::size_t length, tcp_mbap const &header,
-                          std::error_code error) {
-            T response;
-            std::uint8_t const *current = start;
-            std::uint8_t const *end = start + length;
-
-            // Pass errors to callback.
-            if (error) {
-                callback(header, response, error);
-                return current;
-            }
-
-            // Make sure the message contains atleast a function code.
-            if (length < 1) {
-                callback(header, response, modbus_error(errc::message_size_mismatch));
-                return current;
-            }
-
-            // Function codes 128 and above are exception responses.
-            if (*current >= 128) {
-                callback(header, response, modbus_error(length >= 2 ? errc_t(start[1]) : errc::message_size_mismatch));
-                return current;
-            }
-
-            // Try to deserialize the PDU.
-            current = impl::deserialize(current, end - current, response, error);
-            if (error) {
-                callback(header, response, error);
-                return current;
-            }
-
-            // Check response length consistency.
-            // Length from the MBAP header includes the unit ID (1 byte) which is part of the MBAP header, not the response ADU.
-            if (current - start != header.length - 1) {
-                callback(header, response, modbus_error(errc::message_size_mismatch));
-                return current;
-            }
-
-            callback(header, response, error);
-            return current;
-        };
-    }
 
 } // namespace modbus

@@ -29,7 +29,6 @@
 
 namespace modbus {
 namespace impl {
-
     /// Deserialize a read_coils response.
     template <typename InputIterator>
     InputIterator deserialize(InputIterator start, std::size_t length, response::read_coils &adu,

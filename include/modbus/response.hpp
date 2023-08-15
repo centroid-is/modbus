@@ -1,4 +1,5 @@
 // Copyright (c) 2017, Fizyr (https://fizyr.com)
+// Copyright (c) 2023, Skaginn3x (https://skaginn3x.com)
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -25,6 +26,7 @@
 #pragma once
 #include <cstdint>
 #include <vector>
+#include <variant>
 
 #include "functions.hpp"
 
@@ -50,7 +52,7 @@ namespace response {
         using request = request::read_coils;
 
         /// The function code.
-        static constexpr std::uint8_t function = functions::read_coils;
+        static constexpr function_t function = function_t::read_coils;
 
         /// The read values.
         std::vector<bool> values;
@@ -65,7 +67,7 @@ namespace response {
         using request = request::read_discrete_inputs;
 
         /// The function code.
-        static constexpr std::uint8_t function = functions::read_discrete_inputs;
+        static constexpr function_t function = function_t::read_discrete_inputs;
 
         /// The read values.
         std::vector<bool> values;
@@ -80,7 +82,7 @@ namespace response {
         using request = request::read_holding_registers;
 
         /// The function code.
-        static constexpr std::uint8_t function = functions::read_holding_registers;
+        static constexpr function_t function = function_t::read_holding_registers;
 
         /// The read values.
         std::vector<std::uint16_t> values;
@@ -95,7 +97,7 @@ namespace response {
         using request = request::read_input_registers;
 
         /// The function code.
-        static constexpr std::uint8_t function = functions::read_input_registers;
+        static constexpr function_t function = function_t::read_input_registers;
 
         /// The read values.
         std::vector<std::uint16_t> values;
@@ -110,7 +112,7 @@ namespace response {
         using request = request::write_single_coil;
 
         /// The function code.
-        static constexpr std::uint8_t function = functions::write_single_coil;
+        static constexpr function_t function = function_t::write_single_coil;
 
         /// The address of the coil written to.
         std::uint16_t address;
@@ -128,7 +130,7 @@ namespace response {
         using request = request::write_single_register;
 
         /// The function code.
-        static constexpr std::uint8_t function = functions::write_single_register;
+        static constexpr function_t function = function_t::write_single_register;
 
         /// The address of the register written to.
         std::uint16_t address;
@@ -146,7 +148,7 @@ namespace response {
         using request = request::write_multiple_coils;
 
         /// The function code.
-        static constexpr std::uint8_t function = functions::write_multiple_coils;
+        static constexpr function_t function = function_t::write_multiple_coils;
 
         /// The address of the first coil written to.
         std::uint16_t address;
@@ -164,7 +166,7 @@ namespace response {
         using request = request::write_multiple_registers;
 
         /// The function code.
-        static constexpr std::uint8_t function = functions::write_multiple_registers;
+        static constexpr function_t function = function_t::write_multiple_registers;
 
         /// The address of the first register written to.
         std::uint16_t address;
@@ -182,7 +184,7 @@ namespace response {
         using request = request::mask_write_register;
 
         /// The function code.
-        static constexpr std::uint8_t function = functions::mask_write_register;
+        static constexpr function_t function = function_t::mask_write_register;
 
         /// The address of the register written to.
         std::uint16_t address;
@@ -197,5 +199,17 @@ namespace response {
         std::size_t length() const { return 7; }
     };
 
+    using responses = std::variant<mask_write_register, read_holding_registers, read_coils, read_discrete_inputs,
+                                   read_input_registers, write_multiple_coils, write_multiple_registers,
+                                   write_single_coil, write_single_register, std::monostate>;
+
+    responses instace_from_function(function_t func){
+        switch(func){
+            case function_t::read_coils:
+                return read_coils{};
+            default:
+                return std::monostate{};
+        }
+    }
 } // namespace response
 } // namespace modbus
