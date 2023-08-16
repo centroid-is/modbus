@@ -48,20 +48,6 @@ namespace impl {
         return htons(value);
     }
 
-    /// Serialize a packed list of booleans for Modbus.
-    [[nodiscard]] std::vector<uint8_t> serialize_bit_list(std::vector<bool> const &values) {
-        std::vector<uint8_t> ret_value;
-
-        for (std::size_t start_bit = 0; start_bit < values.size(); start_bit += 8) {
-            std::uint8_t byte = 0;
-            for (int sub_bit = 0; sub_bit < 8 && start_bit + sub_bit < values.size(); ++sub_bit) {
-                byte |= 1 << sub_bit;
-            }
-             serialize_be8(byte);
-        }
-
-        return ret_value;
-    }
 
 
     /// Serialize a vector of booleans for a Modbus request message.

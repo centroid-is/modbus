@@ -31,5 +31,3 @@ int main(int argc, char* argv[]) {
     std::cout << "Starting server" << std::endl;
     ctx.run();
 }
-
-// vim: autoindent syntax=cpp noexpandtab tabstop=4 softtabstop=4 shiftwidth=4

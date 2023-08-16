@@ -30,6 +30,11 @@ int main(){
 
 For more examples see [examples](examples/) directory.
 
+# Future improvements
+- Serial support
+- verify functionality on big endian systems
+- conformance test
+
 # Modbus specification links
 - Tcp implementation guide [https://www.modbus.org/docs/Modbus_Messaging_Implementation_Guide_V1_0b.pdf](https://www.modbus.org/docs/Modbus_Messaging_Implementation_Guide_V1_0b.pdf)
 - Conformance test spec [https://www.modbus.org/docs/MBConformanceTestSpec_v3.0.pdf](https://www.modbus.org/docs/MBConformanceTestSpec_v3.0.pdf)

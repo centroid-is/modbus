@@ -41,20 +41,27 @@ using namespace asio::experimental::awaitable_operators;
 namespace modbus {
 
     std::expected<std::vector<uint8_t>, modbus::errc_t>
-    handle_request(tcp_mbap header, std::ranges::range auto data, auto &&handler) {
+    handle_request(tcp_mbap const& header, std::ranges::range auto data, auto &&handler) {
         auto req_variant = impl::deserialize_request(std::span(data), static_cast<function_t>(data[0]));
         if (!req_variant) {
             return std::unexpected(modbus::errc_t::illegal_data_value);
         }
         auto req = req_variant.value();
-        modbus::errc_t modbus_error = modbus::errc_t::no_error;
-        response::responses resp = handler->handle(header.unit, req, modbus_error);
-        if (modbus_error) {
-            return std::unexpected(modbus_error);
-        }
+
+        auto resp = std::visit([&](auto& request) -> std::expected<std::vector<uint8_t>, modbus::errc_t> {
+            modbus::errc_t error = modbus::errc_t::no_error;
+            response::responses resp = handler->handle(header.unit, request, error);
+            if (modbus_error) return std::unexpected(error);
+            return std::visit([](auto& resp) -> std::vector<uint8_t> {
+                return impl::serialize_response(resp);
+            }, resp);
+        }, req);
+
+        if (!resp) return std::unexpected(resp.error());
+        auto resp_buffer = resp.value();
+
         asio::streambuf buffer;
         auto out = std::ostreambuf_iterator<char>(&buffer);
-        std::vector<uint8_t> resp_buffer = impl::serialize_response(resp);
         std::copy_n(asio::buffers_begin(buffer.data()), buffer.size(), resp_buffer.begin());
         return resp_buffer;
     }
@@ -62,7 +69,6 @@ namespace modbus {
     struct connection_state {
         connection_state(tcp::socket client) : client_(std::move(client)) {
         }
-
         tcp::socket client_;
     };
 
@@ -137,28 +143,7 @@ namespace modbus {
 
             auto function_code = static_cast<function_t>(request_buffer[0]);
             // Handle the request
-            auto resp = [&]() -> std::expected<std::vector<uint8_t>, modbus::errc_t> {
-                switch (function_code) {
-                    case function_t::read_coils:
-                        return handle_request < request::read_coils > (header, request_buffer, handler);
-                    case function_t::read_discrete_inputs:
-                        return handle_request < request::read_discrete_inputs > (header, request_buffer, handler);
-                    case function_t::read_holding_registers:
-                        return handle_request < request::read_holding_registers > (header, request_buffer, handler);
-                    case function_t::read_input_registers:
-                        return handle_request < request::read_input_registers > (header, request_buffer, handler);
-                    case function_t::write_single_coil:
-                        return handle_request < request::write_single_coil > (header, request_buffer, handler);
-                    case function_t::write_single_register:
-                        return handle_request < request::write_single_register > (header, request_buffer, handler);
-                    case function_t::write_multiple_coils:
-                        return handle_request < request::write_multiple_coils > (header, request_buffer, handler);
-                    case function_t::write_multiple_registers:
-                        return handle_request < request::write_multiple_registers > (header, request_buffer, handler);
-                    default:
-                        return std::unexpected(errc::illegal_function);
-                }
-            }();
+            auto resp = handle_request(header, request_buffer, handler);
             if (resp) {
                 header.length = resp.value().size() + 1;
                 auto header_bytes = header.to_bytes();

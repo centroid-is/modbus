@@ -3,6 +3,7 @@
 #include "server.hpp"
 #include "error.hpp"
 
+//TODO: Create a simpler default handler and write tests for both
 struct default_handler {
     default_handler()
             : registers_(0x20000), coils_(0x20000) {}
@@ -78,6 +79,15 @@ struct default_handler {
             *oit++ = *iit++;
             ++resp.count;
         }
+        return resp;
+    }
+    // TODO: Verify this method
+    modbus::response::mask_write_register handle(uint8_t, const modbus::request::mask_write_register& req, modbus::errc_t& modbus_error) {
+        modbus::response::mask_write_register resp;
+        resp.address = req.address;
+        resp.and_mask = req.and_mask;
+        resp.or_mask = req.or_mask;
+        registers_[req.address] = (registers_[req.address] & req.and_mask) | req.or_mask;
         return resp;
     }
     std::vector<std::uint16_t> registers_;
