@@ -1,0 +1,7 @@
+
+add_executable(client_example client_example.cpp)
+target_link_libraries(client_example PRIVATE modbus Boost::boost)
+
+add_executable(server_example server_example.cpp)
+target_link_libraries(server_example PRIVATE modbus Boost::boost)
+target_compile_definitions(server_example PRIVATE BOOST_ASIO_ENABLE_HANDLER_TRACKING)

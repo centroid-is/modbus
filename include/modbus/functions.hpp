@@ -25,8 +25,6 @@
 
 #pragma once
 
-#include <cstdint>
-
 namespace modbus {
     enum struct function_t {
         read_coils = 0x01,

@@ -28,6 +28,7 @@
 #include <vector>
 
 #include "functions.hpp"
+#include "impl/deserialize_base.hpp"
 
 namespace modbus {
 
@@ -60,7 +61,15 @@ namespace request {
         std::uint16_t count;
 
         /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 5; }
+        [[nodiscard]] static std::size_t length() { return 5; }
+
+        /// Deserialize request.
+        [[nodiscard]]
+        std::error_code deserialize(std::ranges::range auto data){
+            address = impl::deserialize_be16(std::span(data).subspan(0, 2));
+            count   = impl::deserialize_be16(std::span(data).subspan(2, 2));
+            return {};
+        }
     };
 
     /// Message representing a read_discrete_inputs request.
@@ -78,7 +87,15 @@ namespace request {
         std::uint16_t count;
 
         /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 5; }
+        [[nodiscard]] static std::size_t length() { return 5; }
+
+        /// Deserialize request.
+        [[nodiscard]]
+        std::error_code deserialize(std::ranges::range auto data){
+            address = impl::deserialize_be16(std::span(data).subspan(0, 2));
+            count   = impl::deserialize_be16(std::span(data).subspan(2, 2));
+            return {};
+        }
     };
 
     /// Message representing a read_holding_registers request.
@@ -96,7 +113,15 @@ namespace request {
         std::uint16_t count;
 
         /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 5; }
+        [[nodiscard]] static std::size_t length() { return 5; }
+
+        /// Deserialize request.
+        [[nodiscard]]
+        std::error_code deserialize(std::ranges::range auto data){
+            address = impl::deserialize_be16(std::span(data).subspan(0, 2));
+            count   = impl::deserialize_be16(std::span(data).subspan(2, 2));
+            return {};
+        }
     };
 
     /// Message representing a read_input_registers request.
@@ -114,7 +139,15 @@ namespace request {
         std::uint16_t count;
 
         /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 5; }
+        [[nodiscard]] static std::size_t length() { return 5; }
+
+        /// Deserialize request.
+        [[nodiscard]]
+        std::error_code deserialize(std::ranges::range auto data){
+            address = impl::deserialize_be16(std::span(data).subspan(0, 2));
+            count   = impl::deserialize_be16(std::span(data).subspan(2, 2));
+            return {};
+        }
     };
 
     /// Message representing a write_single_coil request.
@@ -132,7 +165,17 @@ namespace request {
         bool value;
 
         /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 5; }
+        [[nodiscard]] static std::size_t length() { return 5; }
+
+        /// Deserialize request.
+        [[nodiscard]]
+        std::error_code deserialize(std::ranges::range auto data){
+            address = impl::deserialize_be16(std::span(data).subspan(0, 2));
+            auto value_expected = impl::deserialize_bool(std::span(data).subspan(2, 2));
+            if (!value_expected) return value_expected.error();
+            value = value_expected.value();
+            return {};
+        }
     };
 
     /// Message representing a write_single_register request.
@@ -150,7 +193,15 @@ namespace request {
         std::uint16_t value;
 
         /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 5; }
+        [[nodiscard]] static std::size_t length() { return 5; }
+
+        /// Deserialize request.
+        [[nodiscard]]
+        std::error_code deserialize(std::ranges::range auto data){
+            address = impl::deserialize_be16(std::span(data).subspan(0, 2));
+            value = impl::deserialize_be16(std::span(data).subspan(2, 2));
+            return {};
+        }
     };
 
     /// Message representing a write_multiple_coils request.
@@ -168,7 +219,17 @@ namespace request {
         std::vector<bool> values;
 
         /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 6 + (values.size() + 7) / 8; }
+        [[nodiscard]] std::size_t length() const { return 6 + (values.size() + 7) / 8; }
+
+        /// Deserialize request.
+        [[nodiscard]]
+        std::error_code deserialize(std::ranges::range auto data){
+            address = impl::deserialize_be16(std::span(data).subspan(0, 2));
+            auto expected = impl::deserialize_bits_request(std::span(data).subspan(2, data.size() - 2));
+            if (!expected) return expected.error();
+            values = expected.value();
+            return {};
+        }
     };
 
     /// Message representing a write_multiple_registers request.
@@ -186,7 +247,17 @@ namespace request {
         std::vector<std::uint16_t> values;
 
         /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 6 + values.size() * 2; }
+        [[nodiscard]] std::size_t length() const { return 6 + values.size() * 2; }
+
+        /// Deserialize request.
+        [[nodiscard]]
+        std::error_code deserialize(std::ranges::range auto data){
+            address = impl::deserialize_be16(std::span(data).subspan(0, 2));
+            auto expected = impl::deserialize_words_request(std::span(data).subspan(2, data.size() - 2));
+            if (!expected) return expected.error();
+            values = expected.value();
+            return {};
+        }
     };
 
     /// Message representing a mask_write_register request.
@@ -207,7 +278,16 @@ namespace request {
         std::uint16_t or_mask;
 
         /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 7; }
+        [[nodiscard]] std::size_t length() const { return 7; }
+
+        /// Deserialize request.
+        [[nodiscard]]
+        std::error_code deserialize(std::ranges::range auto data){
+            address = impl::deserialize_be16(std::span(data).subspan(0, 2));
+            and_mask = impl::deserialize_be16(std::span(data).subspan(2, 2));
+            or_mask = impl::deserialize_be16(std::span(data).subspan(4, 2));
+            return {};
+        }
     };
 
     using requests = std::variant<read_coils, read_discrete_inputs, read_holding_registers, read_input_registers,

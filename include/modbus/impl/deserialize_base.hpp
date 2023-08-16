@@ -1,4 +1,5 @@
 // Copyright (c) 2017, Fizyr (https://fizyr.com)
+// Copyright (c) 2023, Skaginn3x (https://skaginn3x.com)
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -64,6 +65,7 @@ namespace modbus {
         /// Deserialize an uint8_t in big endian.
         [[nodiscard]]
         inline uint8_t deserialize_be8(std::ranges::range auto data) {
+            static_assert(sizeof(typename decltype(data)::value_type) == 1);
             assert(!data.empty());
             return static_cast<uint8_t>(data[0]);
         }
@@ -71,6 +73,7 @@ namespace modbus {
         /// Deserialize an uint16_t in big endian.
         [[nodiscard]]
         inline uint16_t deserialize_be16(std::ranges::range auto data) {
+            static_assert(sizeof(typename decltype(data)::value_type) == 1);
             assert(data.size() >= 2);
             return ntohs(*reinterpret_cast<std::uint16_t const *>(data.data()));
         }
@@ -85,6 +88,7 @@ namespace modbus {
         [[nodiscard]]
         inline std::expected<function_t, std::error_code>
         deserialize_function(std::ranges::range auto data, function_t expected_function) {
+            static_assert(sizeof(typename decltype(data)::value_type) == 1);
             assert(!data.empty());
             auto function = static_cast<function_t>(data[0]);
             if (function != expected_function) return std::unexpected(modbus_error(errc::unexpected_function_code));
@@ -113,7 +117,7 @@ namespace modbus {
 
         /// Read a Modbus vector of 16 bit words from a byte sequence.
         [[nodiscard]]
-        inline std::expected<std::vector<std::uint16_t>, std::error_code> deserialize_word_list(std::ranges::range auto data, std::size_t word_count) {
+        std::expected<std::vector<std::uint16_t>, std::error_code> deserialize_word_list(std::ranges::range auto data, std::size_t word_count) {
             static_assert(sizeof(typename decltype(data)::value_type) == 1);
             // Check available data length.
             if (auto error = check_length(data.size(), word_count * 2))
@@ -129,103 +133,61 @@ namespace modbus {
         }
 
         /// Read a Modbus vector of bits from a byte sequence representing a request message.
-        template<typename InputIterator>
-        InputIterator deserialize_bits_request(InputIterator start, std::size_t length, std::vector<bool> &values,
-                                               std::error_code &error) {
-            if (error) return start;
-            if (!check_length(length, 3))
-                return start;
+        [[nodiscard]]
+        std::expected<std::vector<bool>, std::error_code> deserialize_bits_request(std::ranges::range auto data){
+            if (auto error = check_length(data.size(), 3))
+                return std::unexpected(error);
 
             // Read word and byte count.
-            std::uint16_t bit_count;
-            std::uint8_t byte_count;
-            start = deserialize_be16(start, bit_count);
-            start = deserialize_be8(start, byte_count);
+            std::uint16_t bit_count = deserialize_be16(std::span(data).subspan(0, 2));
+            std::uint8_t byte_count = deserialize_be8(std::span(data).subspan(2, 1));
 
             // Make sure bit and byte count match.
             if (byte_count != (bit_count + 7) / 8) {
-                error = modbus_error(errc::message_size_mismatch);
-                return start;
+                return std::unexpected(modbus_error(errc::message_size_mismatch));
             }
 
-            start = deserialize_bit_list(start, length - 3, bit_count, values, error);
-            return start;
+            return deserialize_bit_list(std::span(data).subspan(3, data.size() - 3), bit_count);
         }
 
         /// Read a Modbus vector of bits from a byte sequence representing a response message.
-        /**
-         * Reads byte count as 8 bit integer and finally the bits packed in little endian.
-         *
-         * Reads nothing if error code contains an error.
-         *
-         * \return Iterator past the read sequence.
-         */
-        template<typename InputIterator>
-        InputIterator deserialize_bits_response(InputIterator start, std::size_t length, std::vector<bool> &values,
-                                                std::error_code &error) {
-            if (error) return start;
-            if (!check_length(length, 3))
-                return start;
+        [[nodiscard]]
+        inline std::expected<std::vector<bool>, std::error_code> deserialize_bits_response(std::ranges::range auto data){
+            if (auto error = check_length(data.size(), 3))
+                return std::unexpected(error);
 
             // Read word and byte count.
-            std::uint8_t byte_count;
-            start = deserialize_be8(start, byte_count);
-            start = deserialize_bit_list(start, length - 1, byte_count * 8, values, error);
-            return start;
+            std::uint8_t byte_count = deserialize_be8(data.subspan(0, 1));
+            return deserialize_bit_list(data.subspan(1, data.size() - 1), byte_count * 8);
         }
 
         /// Read a Modbus vector of 16 bit words from a byte sequence representing a request message.
-        /**
-         * Reads word count as 16 bit integer, byte count as 8 bit integer and finally the words as 16 bit integers.
-         *
-         * Reads nothing if error code contains an error.
-         *
-         * \return Iterator past the read sequence.
-         */
-        template<typename InputIterator>
-        InputIterator
-        deserialize_words_request(InputIterator start, std::size_t length, std::vector<std::uint16_t> &values,
-                                  std::error_code &error) {
-            if (error) return start;
-            if (!check_length(length, 3))
-                return start;
+        [[nodiscard]]
+        std::expected<std::vector<uint16_t>, std::error_code> deserialize_words_request(std::ranges::range auto data){
+            if (auto error = check_length(data.size(), 3))
+                return std::unexpected(error);
 
             // Read word and byte count.
-            std::uint16_t word_count;
-            std::uint8_t byte_count;
-            start = deserialize_be16(start, word_count);
-            start = deserialize_be8(start, byte_count);
+            std::uint16_t word_count = deserialize_be16(data.subspan(0, 2));
+            std::uint8_t byte_count = deserialize_be8(data.subspan(2, 1));
 
             // Make sure word and byte count match.
             if (byte_count != 2 * word_count) {
-                error = modbus_error(errc::message_size_mismatch);
-                return start;
+                return std::unexpected(modbus_error(errc::message_size_mismatch));
             }
 
-            start = deserialize_word_list(start, length - 3, word_count, values, error);
-            return start;
+            return deserialize_word_list(data.subspan(3, data.size() - 3), word_count);
         }
 
         /// Read a Modbus vector of 16 bit words from a byte sequence representing a response message.
-        /**
-         * Reads byte count as 8 bit integer and finally the words as 16 bit integers.
-         *
-         * Reads nothing if error code contains an error.
-         *
-         * \return Iterator past the read sequence.
-         */
-        template<typename InputIterator>
-        InputIterator deserialize_words_response(InputIterator start, std::size_t length,
-                                                 std::vector<std::uint16_t> &values, std::error_code &error) {
-            if (error) return start;
-            if (!check_length(length, 3))
-                return start;
+        [[nodiscard]]
+        std::expected<std::vector<uint16_t>, std::error_code> deserialize_words_response(std::ranges::range auto data) {
+            if (auto error = check_length(data.size(), 3))
+                return std::unexpected(error);
 
             // Read word and byte count.
-            std::uint8_t byte_count;
-            start = deserialize_be8(start, byte_count);
-            start = deserialize_word_list(start, length - 1, byte_count / 2, values, error);
-            return start;
+            std::uint8_t byte_count = deserialize_be8(data.subspan(0, 1));
+            return deserialize_word_list(data.subspan(1, data.size() - 1), byte_count / 2);
         }
 
     } // namespace impl

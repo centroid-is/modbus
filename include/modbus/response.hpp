@@ -58,7 +58,11 @@ namespace response {
         std::vector<bool> values;
 
         /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 2 + (values.size() + 7) / 8; }
+        [[nodiscard]] std::size_t length() const { return 2 + (values.size() + 7) / 8; }
+
+        std::vector<uint8_t> serialize() const {
+            return {};
+        }
     };
 
     /// Message representing a read_discrete_inputs response.
@@ -73,7 +77,11 @@ namespace response {
         std::vector<bool> values;
 
         /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 2 + (values.size() + 7) / 8; }
+        [[nodiscard]] std::size_t length() const { return 2 + (values.size() + 7) / 8; }
+
+        std::vector<uint8_t> serialize() const {
+            return {};
+        }
     };
 
     /// Message representing a read_holding_registers response.
@@ -88,7 +96,11 @@ namespace response {
         std::vector<std::uint16_t> values;
 
         /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 2 + values.size() * 2; }
+        [[nodiscard]] std::size_t length() const { return 2 + values.size() * 2; }
+
+        std::vector<uint8_t> serialize() const {
+            return {};
+        }
     };
 
     /// Message representing a read_input_registers response.
@@ -103,7 +115,11 @@ namespace response {
         std::vector<std::uint16_t> values;
 
         /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 2 + values.size() * 2; }
+        [[nodiscard]] std::size_t length() const { return 2 + values.size() * 2; }
+
+        std::vector<uint8_t> serialize() const {
+            return {};
+        }
     };
 
     /// Message representing a write_single_coil response.
@@ -121,7 +137,11 @@ namespace response {
         bool value;
 
         /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 5; }
+        [[nodiscard]] static std::size_t length() { return 5; }
+
+        std::vector<uint8_t> serialize() const {
+            return {};
+        }
     };
 
     /// Message representing a write_single_register response.
@@ -139,7 +159,11 @@ namespace response {
         std::uint16_t value;
 
         /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 5; }
+        [[nodiscard]]static std::size_t length() { return 5; }
+
+        std::vector<uint8_t> serialize() const {
+            return {};
+        }
     };
 
     /// Message representing a write_multiple_coil response.
@@ -157,7 +181,11 @@ namespace response {
         std::uint16_t count;
 
         /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 5; }
+        [[nodiscard]] static std::size_t length() { return 5; }
+
+        std::vector<uint8_t> serialize() const {
+            return {};
+        }
     };
 
     /// Message representing a write_multiple_registers response.
@@ -175,7 +203,11 @@ namespace response {
         std::uint16_t count;
 
         /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 5; }
+        [[nodiscard]] static std::size_t length() { return 5; }
+
+        std::vector<uint8_t> serialize() const {
+            return {};
+        }
     };
 
     /// Message representing a mask_write_register response.
@@ -196,20 +228,15 @@ namespace response {
         std::uint16_t or_mask;
 
         /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 7; }
+        [[nodiscard]] static std::size_t length() { return 7; }
+
+        std::vector<uint8_t> serialize() const {
+            return {};
+        }
     };
 
     using responses = std::variant<mask_write_register, read_holding_registers, read_coils, read_discrete_inputs,
                                    read_input_registers, write_multiple_coils, write_multiple_registers,
-                                   write_single_coil, write_single_register, std::monostate>;
-
-    responses instace_from_function(function_t func){
-        switch(func){
-            case function_t::read_coils:
-                return read_coils{};
-            default:
-                return std::monostate{};
-        }
-    }
+                                   write_single_coil, write_single_register>;
 } // namespace response
 } // namespace modbus

@@ -1,4 +1,5 @@
 // Copyright (c) 2017, Fizyr (https://fizyr.com)
+// Copyright (c) 2023, Skaginn3x (https://skaginn3x.com)
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -30,69 +31,40 @@ namespace modbus {
 namespace impl {
 
     /// Convert a boolean to a uint16 Modbus representation.
-    /**
-	 * \return 0xff00 if value is true, 0x0000 otherwise.
-	 */
     inline std::uint16_t bool_to_uint16(bool value) { return value ? 0xff00 : 0x0000; }
 
     /// Serialize an uint8_t in big endian.
-    /**
-	 * \return The number of bytes written.
-	 */
-    template <typename OutputIterator> std::size_t serialize_be8(OutputIterator &out, std::uint8_t value) {
-        *out++ = value;
-        return 1;
+    [[nodiscard]] inline uint8_t serialize_be8(std::uint8_t value) {
+        return value;
     }
 
     /// Serialize an function_t in big endian.
-    /**
-	 * \return The number of bytes written.
-	 */
-    template <typename OutputIterator> std::size_t serialize_be8(OutputIterator &out, function_t value) {
-        *out++ = static_cast<uint8_t>(value);
-        return 1;
+    [[nodiscard]] uint8_t serialize_function(function_t value) {
+        return static_cast<uint8_t>(value);
     }
 
     /// Serialize an uint16_t in big endian.
-    /**
-	 * \return The number of bytes written.
-	 */
-    template <typename OutputIterator> std::size_t serialize_be16(OutputIterator &out, std::uint16_t value) {
-        *out++ = value >> 8 & 0xff;
-        *out++ = value >> 0 & 0xff;
-        return 2;
+    [[nodiscard]] uint16_t serialize_be16(std::uint16_t value) {
+        return htons(value);
     }
 
     /// Serialize a packed list of booleans for Modbus.
-    /**
-	 * Writes the bits packed in little endian.
-	 *
-	 * \return The number of bytes written.
-	 */
-    template <typename OutputIterator>
-    std::size_t serialize_bit_list(OutputIterator &out, std::vector<bool> const &values) {
-        std::size_t written = 0;
+    [[nodiscard]] std::vector<uint8_t> serialize_bit_list(std::vector<bool> const &values) {
+        std::vector<uint8_t> ret_value;
 
         for (std::size_t start_bit = 0; start_bit < values.size(); start_bit += 8) {
             std::uint8_t byte = 0;
             for (int sub_bit = 0; sub_bit < 8 && start_bit + sub_bit < values.size(); ++sub_bit) {
                 byte |= 1 << sub_bit;
             }
-            written += serialize_be8(out, byte);
+             serialize_be8(byte);
         }
 
-        return written;
+        return ret_value;
     }
 
 
     /// Serialize a vector of booleans for a Modbus request message.
-    /**
-	 * Writes first the number of booleans as uint16,
-	 * then the number of bytes as uint8 and finally
-	 * all the bits packed in little endian.
-	 *
-	 * \return The number of bytes written.
-	 */
     template <typename OutputIterator>
     std::size_t serialize_bits_request(OutputIterator &out, std::vector<bool> const &values) {
         std::size_t written = 0;
@@ -106,12 +78,6 @@ namespace impl {
     }
 
     /// Serialize a vector of booleans for a Modbus response message.
-    /**
-	 * Writes the number of bytes as uint8 followed by
-	 * the bits packed in little endian.
-	 *
-	 * \return The number of bytes written.
-	 */
     template <typename OutputIterator>
     std::size_t serialize_bits_response(OutputIterator &out, std::vector<bool> const &values) {
         std::size_t written = 0;
@@ -124,13 +90,6 @@ namespace impl {
     }
 
     /// Serialize a vector of 16 bit words for a Modbus request message.
-    /**
-	 * Writes first the number of words as uint16,
-	 * then the number of bytes as uint8 and finally
-	 * all the words in big endian.
-	 *
-	 * \return The number of bytes written.
-	 */
     template <typename OutputIterator>
     std::size_t serialize_words_request(OutputIterator &out, std::vector<std::uint16_t> const &values) {
         std::size_t written = 0;
@@ -145,13 +104,6 @@ namespace impl {
     }
 
     /// Serialize a vector of 16 bit words for a Modbus reponse message.
-    /**
-	 * Writes first the number of words as uint16,
-	 * then the number of bytes as uint8 and finally
-	 * all the words in big endian.
-	 *
-	 * \return The number of bytes written.
-	 */
     template <typename OutputIterator>
     std::size_t serialize_words_response(OutputIterator &out, std::vector<std::uint16_t> const &values) {
         std::size_t written = 0;

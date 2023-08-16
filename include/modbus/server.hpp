@@ -8,13 +8,11 @@
 #include <ostream>
 #include <set>
 #include <expected>
+#include <ranges>
 
 #include <boost/asio.hpp>
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/experimental/awaitable_operators.hpp>
-#include <iostream>
-#include <algorithm>
-#include <functional>
 
 #include "functions.hpp"
 #include "tcp.hpp"
@@ -42,25 +40,21 @@ using namespace asio::experimental::awaitable_operators;
 
 namespace modbus {
 
-    template<typename Request>
     std::expected<std::vector<uint8_t>, modbus::errc_t>
-    handle_request(tcp_mbap header, const uint8_t *data, size_t data_size, auto &&handler) {
-        Request req;
-        std::error_code err;
-        impl::deserialize(data, data_size, req, err);
-
-        if (err) {
+    handle_request(tcp_mbap header, std::ranges::range auto data, auto &&handler) {
+        auto req_variant = impl::deserialize_request(std::span(data), static_cast<function_t>(data[0]));
+        if (!req_variant) {
             return std::unexpected(modbus::errc_t::illegal_data_value);
         }
+        auto req = req_variant.value();
         modbus::errc_t modbus_error = modbus::errc_t::no_error;
-        typename Request::response resp = handler->handle(header.unit, req, modbus_error);
+        response::responses resp = handler->handle(header.unit, req, modbus_error);
         if (modbus_error) {
             return std::unexpected(modbus_error);
         }
         asio::streambuf buffer;
         auto out = std::ostreambuf_iterator<char>(&buffer);
-        impl::serialize(out, resp);
-        std::vector<uint8_t> resp_buffer(buffer.size(), 0);
+        std::vector<uint8_t> resp_buffer = impl::serialize_response(resp);
         std::copy_n(asio::buffers_begin(buffer.data()), buffer.size(), resp_buffer.begin());
         return resp_buffer;
     }
@@ -146,29 +140,21 @@ namespace modbus {
             auto resp = [&]() -> std::expected<std::vector<uint8_t>, modbus::errc_t> {
                 switch (function_code) {
                     case function_t::read_coils:
-                        return handle_request<request::read_coils>(header, request_buffer.data(), request_count,
-                                                                   handler);
+                        return handle_request < request::read_coils > (header, request_buffer, handler);
                     case function_t::read_discrete_inputs:
-                        return handle_request<request::read_discrete_inputs>(header, request_buffer.data(),
-                                                                             request_count, handler);
+                        return handle_request < request::read_discrete_inputs > (header, request_buffer, handler);
                     case function_t::read_holding_registers:
-                        return handle_request<request::read_holding_registers>(header, request_buffer.data(),
-                                                                               request_count, handler);
+                        return handle_request < request::read_holding_registers > (header, request_buffer, handler);
                     case function_t::read_input_registers:
-                        return handle_request<request::read_input_registers>(header, request_buffer.data(),
-                                                                             request_count, handler);
+                        return handle_request < request::read_input_registers > (header, request_buffer, handler);
                     case function_t::write_single_coil:
-                        return handle_request<request::write_single_coil>(header, request_buffer.data(), request_count,
-                                                                          handler);
+                        return handle_request < request::write_single_coil > (header, request_buffer, handler);
                     case function_t::write_single_register:
-                        return handle_request<request::write_single_register>(header, request_buffer.data(),
-                                                                              request_count, handler);
+                        return handle_request < request::write_single_register > (header, request_buffer, handler);
                     case function_t::write_multiple_coils:
-                        return handle_request<request::write_multiple_coils>(header, request_buffer.data(),
-                                                                             request_count, handler);
+                        return handle_request < request::write_multiple_coils > (header, request_buffer, handler);
                     case function_t::write_multiple_registers:
-                        return handle_request<request::write_multiple_registers>(header, request_buffer.data(),
-                                                                                 request_count, handler);
+                        return handle_request < request::write_multiple_registers > (header, request_buffer, handler);
                     default:
                         return std::unexpected(errc::illegal_function);
                 }
@@ -179,7 +165,6 @@ namespace modbus {
                 std::array<asio::const_buffer, 2> buffs{
                         asio::buffer(header_bytes), asio::buffer(resp.value())};
                 size_t n = co_await async_write(state->client_, buffs, use_awaitable);
-                std::cout << "Wrote " << n << "\n";
             } else {
                 co_await async_write(state->client_,
                                      asio::buffer(build_error_buffer(header, 0, resp.error()), count),
