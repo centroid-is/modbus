@@ -89,7 +89,8 @@ namespace modbus {
         inline std::expected<function_t, std::error_code>
         deserialize_function(std::ranges::range auto data, function_t expected_function) {
             static_assert(sizeof(typename decltype(data)::value_type) == 1);
-            assert(!data.empty());
+            if (auto error = check_length(data.size(), 1))
+                return std::unexpected(error);
             auto function = static_cast<function_t>(data[0]);
             if (function != expected_function) return std::unexpected(modbus_error(errc::unexpected_function_code));
             return function;
@@ -153,12 +154,12 @@ namespace modbus {
         /// Read a Modbus vector of bits from a byte sequence representing a response message.
         [[nodiscard]]
         inline std::expected<std::vector<bool>, std::error_code> deserialize_bits_response(std::ranges::range auto data){
-            if (auto error = check_length(data.size(), 3))
+            if (auto error = check_length(data.size(), 2))
                 return std::unexpected(error);
 
             // Read word and byte count.
-            std::uint8_t byte_count = deserialize_be8(data.subspan(0, 1));
-            return deserialize_bit_list(data.subspan(1, data.size() - 1), byte_count * 8);
+            std::uint8_t byte_count = deserialize_be8(std::span(data).subspan(0, 1));
+            return deserialize_bit_list(std::span(data).subspan(1), byte_count * 8);
         }
 
         /// Read a Modbus vector of 16 bit words from a byte sequence representing a request message.
@@ -168,15 +169,15 @@ namespace modbus {
                 return std::unexpected(error);
 
             // Read word and byte count.
-            std::uint16_t word_count = deserialize_be16(data.subspan(0, 2));
-            std::uint8_t byte_count = deserialize_be8(data.subspan(2, 1));
+            std::uint16_t word_count = deserialize_be16(std::span(data).subspan(0, 2));
+            std::uint8_t byte_count = deserialize_be8(std::span(data).subspan(2, 1));
 
             // Make sure word and byte count match.
             if (byte_count != 2 * word_count) {
                 return std::unexpected(modbus_error(errc::message_size_mismatch));
             }
 
-            return deserialize_word_list(data.subspan(3, data.size() - 3), word_count);
+            return deserialize_word_list(std::span(data).subspan(3, data.size() - 3), word_count);
         }
 
         /// Read a Modbus vector of 16 bit words from a byte sequence representing a response message.
@@ -186,8 +187,8 @@ namespace modbus {
                 return std::unexpected(error);
 
             // Read word and byte count.
-            std::uint8_t byte_count = deserialize_be8(data.subspan(0, 1));
-            return deserialize_word_list(data.subspan(1, data.size() - 1), byte_count / 2);
+            std::uint8_t byte_count = deserialize_be8(std::span(data).subspan(0, 1));
+            return deserialize_word_list(std::span(data).subspan(1, data.size() - 1), byte_count / 2);
         }
 
     } // namespace impl

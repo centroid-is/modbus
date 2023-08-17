@@ -18,7 +18,7 @@ int main() {
         acceptor.accept(socket);
         size_t size;
         while (true) {
-            std::array<uint8_t, 1024> buffer;
+            std::array<uint8_t, 1024> buffer{};
             try{
                 size = socket.read_some(asio::buffer(buffer));
             } catch (std::exception& e) {

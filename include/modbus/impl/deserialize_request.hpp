@@ -40,7 +40,7 @@ namespace modbus {
         std::expected<request::requests, std::error_code>
         deserialize_request(std::ranges::range auto data, function_t const expected_function) {
             // Deserialize the function
-            auto expect_function = deserialize_function(std::span(data).subspan(0, 1), expected_function);
+            auto expect_function = deserialize_function(std::span(data).subspan(0), expected_function);
             if (!expect_function) return std::unexpected(expect_function.error());
             auto function = expect_function.value();
 
@@ -48,7 +48,7 @@ namespace modbus {
             auto expect_request = request_from_function(function);
             if (!expect_request) return std::unexpected(expect_request.error());
             auto deserialize_error = std::visit([&](auto &request) {
-                return request.deserialize(std::span(data).subspan(1));
+                return request.deserialize(data);
                 }, expect_request.value());
             if (deserialize_error) return std::unexpected(deserialize_error);
             return expect_request.value();

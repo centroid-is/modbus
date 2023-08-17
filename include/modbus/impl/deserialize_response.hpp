@@ -2,11 +2,58 @@
 
 #pragma once
 
+#include <expected>
+#include <ranges>
+
 #include "deserialize_base.hpp"
 #include "modbus/response.hpp"
 
 namespace modbus {
 namespace impl {
+    std::expected<response::responses, std::error_code> response_from_function(function_t func) {
+        switch (func) {
+            case function_t::read_discrete_inputs:
+                return response::read_discrete_inputs{};
+            case function_t::read_coils:
+                return response::read_coils{};
+            case function_t::read_holding_registers:
+                return response::read_holding_registers{};
+            case function_t::read_input_registers:
+                return response::read_input_registers{};
+            case function_t::write_single_coil:
+                return response::write_single_coil{};
+            case function_t::write_single_register:
+                return response::write_single_register{};
+            case function_t::write_multiple_coils:
+                return response::write_multiple_coils{};
+            case function_t::write_multiple_registers:
+                return response::write_multiple_registers{};
+            case function_t::mask_write_register:
+                return response::mask_write_register{};
+            default:
+                return std::unexpected(modbus_error(errc_t::illegal_function));
+        }
+    }
+
+    /// Deserialize response. Expect a function code.
+    [[nodiscard]]
+    std::expected<response::responses, std::error_code>
+    deserialize_response(std::ranges::range auto data, function_t const expected_function) {
+        // Deserialize the function
+        auto expect_function = deserialize_function(std::span(data).subspan(0), expected_function);
+        if (!expect_function) return std::unexpected(expect_function.error());
+        auto function = expect_function.value();
+
+        // Fetch a response instance from the function code.
+        auto expect_response = response_from_function(function);
+        if (!expect_response) return std::unexpected(expect_response.error());
+        auto deserialize_error = std::visit([&](auto &response) {
+            return response.deserialize(data);
+        }, expect_response.value());
+        if (deserialize_error) return std::unexpected(deserialize_error);
+        return expect_response.value();
+    }
+
     /// Deserialize a read_coils response.
     // template <typename InputIterator>
     // InputIterator deserialize(InputIterator start, std::size_t length, response::read_coils &adu,

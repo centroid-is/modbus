@@ -71,7 +71,7 @@ namespace modbus {
 
         /// Struct to hold transaction details.
         struct transaction_t {
-            std::uint8_t function;
+            function_t function;
             Callback handler;
         };
 
@@ -82,7 +82,8 @@ namespace modbus {
         tcp::socket socket;
 
         /// Buffer for read operations.
-        asio::streambuf read_buffer;
+        std::array<uint8_t, 253> read_buffer;
+        std::array<uint8_t, 7> header_buffer;
 
         /// Transaction table to keep track of open transactions.
         std::unordered_map<int, transaction_t> transactions;
@@ -254,7 +255,7 @@ namespace modbus {
     protected:
         asio::awaitable<void> process_loop() {
             for (;;) {
-                auto [err, bytes_transferred] = co_await socket.async_read_some(read_buffer.prepare(1024),
+                auto [err, bytes_transferred] = co_await socket.async_read_some(asio::buffer(header_buffer, tcp_mbap::size),
                                                                                 asio::as_tuple(asio::use_awaitable));
                 if (err) {
                     if (on_io_error)
@@ -262,10 +263,21 @@ namespace modbus {
                     co_return;
                 }
 
-                read_buffer.commit(bytes_transferred);
-
+                auto header = tcp_mbap::from_bytes(header_buffer);
+                auto [err2, bytes_transferred2] = co_await socket.async_read_some(asio::buffer(read_buffer, header.length - 1), // -1 header.unit is inside the count
+                                                                                 asio::as_tuple(asio::use_awaitable));
+                if (err2) {
+                    if (on_io_error)
+                        on_io_error(err2);
+                    co_return;
+                }
+                if (bytes_transferred2 != header.length - 1) {
+                    if (on_io_error)
+                        on_io_error(modbus_error(errc::message_size_mismatch));
+                    co_return;
+                }
                 // Parse and process all complete messages in the buffer.
-                while (process_message());
+                while (process_message(header));
             }
         }
 
@@ -304,7 +316,10 @@ namespace modbus {
             }
 
             // Try to deserialize the PDU.
-            current = impl::deserialize(current, end - current, response, error);
+            auto response_expected = impl::deserialize_response(std::span(current, end - current), static_cast<function_t>(modbus_func));
+            if (!response_expected)
+                callback(response_expected.error(), response, header);
+
             if (error) {
                 callback(error, response, header);
                 return current;
@@ -324,25 +339,18 @@ namespace modbus {
         /**
          * \return True if a message was parsed succesfully, false if there was not enough data.
          */
-        bool process_message() {
-            /// Modbus/TCP MBAP header is 7 bytes.
-            if (read_buffer.size() < 7)
-                return false;
-
-            uint8_t const *data = asio::buffer_cast<uint8_t const *>(read_buffer.data());
-
-            std::error_code error;
-            tcp_mbap header;
-
-            data = impl::deserialize(data, read_buffer.size(), header, error);
+        bool process_message(tcp_mbap const& header) {
+            auto function = static_cast<function_t>(read_buffer[0]);
+            auto ex_request = impl::deserialize_request(read_buffer, function);
 
             // Handle deserialization errors in TCP MBAP.
             // Cant send an error to a specific transaction and can't continue to read from the connection.
-            if (error) {
+            if (!ex_request) {
                 if (on_io_error)
-                    on_io_error(error);
+                    on_io_error(ex_request.error());
                 return false;
             }
+            auto request = ex_request.value();
 
             // Ensure entire message is in buffer.
             if (read_buffer.size() < std::size_t(6 + header.length))
@@ -355,9 +363,7 @@ namespace modbus {
                 return false;
             }
             auto callback = transaction->second.handler;
-            uint8_t stored_function = transaction->second.function;
-            uint8_t recv_function = data[0];
-            if (recv_function != stored_function){
+            if (function != transaction->second.function){
                 // TODO: Make this better
                 throw std::runtime_error("Modbus client.cpp function mismatch!");
             }

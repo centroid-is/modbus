@@ -51,19 +51,12 @@ namespace modbus {
         auto resp = std::visit([&](auto& request) -> std::expected<std::vector<uint8_t>, modbus::errc_t> {
             modbus::errc_t error = modbus::errc_t::no_error;
             response::responses resp = handler->handle(header.unit, request, error);
-            if (modbus_error) return std::unexpected(error);
-            return std::visit([](auto& resp) -> std::vector<uint8_t> {
-                return impl::serialize_response(resp);
-            }, resp);
+            if (error) return std::unexpected(error);
+            return impl::serialize_response(resp);
         }, req);
 
         if (!resp) return std::unexpected(resp.error());
-        auto resp_buffer = resp.value();
-
-        asio::streambuf buffer;
-        auto out = std::ostreambuf_iterator<char>(&buffer);
-        std::copy_n(asio::buffers_begin(buffer.data()), buffer.size(), resp_buffer.begin());
-        return resp_buffer;
+        return resp.value();
     }
 
     struct connection_state {

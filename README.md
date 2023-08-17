@@ -36,6 +36,7 @@ For more examples see [examples](examples/) directory.
 - conformance test
 
 # Modbus specification links
+- Application protocol [https://www.modbus.org/docs/Modbus_Application_Protocol_V1_1b3.pdf](https://www.modbus.org/docs/Modbus_Application_Protocol_V1_1b3.pdf)
 - Tcp implementation guide [https://www.modbus.org/docs/Modbus_Messaging_Implementation_Guide_V1_0b.pdf](https://www.modbus.org/docs/Modbus_Messaging_Implementation_Guide_V1_0b.pdf)
 - Conformance test spec [https://www.modbus.org/docs/MBConformanceTestSpec_v3.0.pdf](https://www.modbus.org/docs/MBConformanceTestSpec_v3.0.pdf)
 - Spec overview [https://www.modbus.org/specs.php](https://www.modbus.org/specs.php)
