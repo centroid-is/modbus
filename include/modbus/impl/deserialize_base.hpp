@@ -153,7 +153,7 @@ namespace modbus {
 
         /// Read a Modbus vector of bits from a byte sequence representing a response message.
         [[nodiscard]]
-        inline std::expected<std::vector<bool>, std::error_code> deserialize_bits_response(std::ranges::range auto data){
+        std::expected<std::vector<bool>, std::error_code> deserialize_bits_response(std::ranges::range auto data){
             if (auto error = check_length(data.size(), 2))
                 return std::unexpected(error);
 

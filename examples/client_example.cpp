@@ -38,10 +38,13 @@ int main(int argc, const char **argv) {
                 std::cerr << "Error reading: " << error.message() << std::endl;
                 exit(-1);
             }
-            std::cout << "Read registers" << std::endl;
-            for (std::size_t i = 0; i < response.values.size(); ++i) {
-                std::cout << "\t"
-                          << " " << response.values[i] << "\n";
+            auto *value = std::get_if<modbus::response::read_holding_registers>(&response);
+            if (value) {
+                std::cout << "Read registers" << std::endl;
+                for (unsigned short i : value->values) {
+                    std::cout << "\t"
+                              << " " << i << "\n";
+                }
             }
         }
         client.close();
