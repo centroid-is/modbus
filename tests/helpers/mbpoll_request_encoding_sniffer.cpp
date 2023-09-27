@@ -1,6 +1,7 @@
 
 // Sniff raw tcp traffic on port 502 and print in hex array form
 // Used to generate test data from known working modbus clients
+// fe mbpoll
 
 #include <boost/asio.hpp>
 #include <iostream>

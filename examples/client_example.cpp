@@ -21,7 +21,6 @@ int main(int argc, const char **argv) {
     std::string_view port = argv[2];
 
     modbus::client client{io_context};
-    client.on_io_error = on_io_error;
 
     co_spawn(io_context, [&]() mutable -> asio::awaitable<void> {
         auto error = co_await client.connect(std::string(hostname), std::string(port), asio::use_awaitable);
@@ -31,22 +30,30 @@ int main(int argc, const char **argv) {
         }
         std::cout << "Connected!" << std::endl;
 
-        for (;;) {
-            auto [error, response, _] = co_await client.read_holding_registers(0, 0, 15,
-                                                                               asio::as_tuple(asio::use_awaitable));
-            if (error) {
-                std::cerr << "Error reading: " << error.message() << std::endl;
-                exit(-1);
-            }
-            auto *value = std::get_if<modbus::response::read_holding_registers>(&response);
-            if (value) {
-                std::cout << "Read registers" << std::endl;
-                for (unsigned short i : value->values) {
-                    std::cout << "\t"
-                              << " " << i << "\n";
-                }
-            }
+        auto response = co_await client.read_holding_registers(0, 0, 15,
+                                                               asio::use_awaitable);
+        if (!response) {
+            std::cerr << "Error reading: " << response.error().message() << std::endl;
+            exit(-1);
         }
+        std::cout << "Read registers"<< std::endl;
+        for (unsigned short i: response->values) {
+            std::cout << "\t"
+                      << " " << i << "\n";
+        }
+
+        auto coils_response = co_await client.read_coils(0, 0, 15,
+                                                         asio::use_awaitable);
+        if (!coils_response) {
+            std::cerr << "Error reading: " << coils_response.error().message() << std::endl;
+            exit(-1);
+        }
+        std::cout << "Read coils" << std::endl;
+        for (unsigned short i: coils_response->values) {
+            std::cout << "\t"
+                      << " " << i << "\n";
+        }
+
         client.close();
     }, asio::detached);
 

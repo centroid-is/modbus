@@ -11,6 +11,10 @@ add_executable(deserialization deserialization.cpp)
 target_link_libraries(deserialization PRIVATE Boost::ut modbus)
 add_test(NAME deserialization COMMAND deserialization)
 
+add_executable(integration integration.cpp)
+target_link_libraries(integration PRIVATE Boost::ut modbus)
+add_test(NAME integration COMMAND integration)
+
 # Modbus application conformance tests
 add_executable(server_conformance conformance/server.cpp)
 target_link_libraries(server_conformance PRIVATE Boost::ut modbus)

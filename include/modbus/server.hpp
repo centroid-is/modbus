@@ -1,12 +1,7 @@
 #pragma once
 
-#define BOOST_ASIO_ENABLE_HANDLER_TRACKING 1
-
 #include <string>
 #include <array>
-#include <cstdint>
-#include <ostream>
-#include <set>
 #include <expected>
 #include <ranges>
 
@@ -142,7 +137,7 @@ namespace modbus {
                 auto header_bytes = header.to_bytes();
                 std::array<asio::const_buffer, 2> buffs{
                         asio::buffer(header_bytes), asio::buffer(resp.value())};
-                size_t n = co_await async_write(state->client_, buffs, use_awaitable);
+                co_await async_write(state->client_, buffs, use_awaitable);
             } else {
                 co_await async_write(state->client_,
                                      asio::buffer(build_error_buffer(header, 0, resp.error()), count),
@@ -161,10 +156,6 @@ namespace modbus {
         server(asio::io_context &io_context, std::shared_ptr<server_handler_t> &handler, int port) :
                 acceptor_(io_context, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port)),
                 handler_(handler) {
-        }
-
-        ~server() {
-            std::cerr << "server dtor" << std::endl;
         }
 
         void start() {

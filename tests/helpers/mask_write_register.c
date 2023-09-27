@@ -1,3 +1,7 @@
+// Little helper program to get a known good
+// reference implementation of mask_write_register
+// Unable to make mbpoll cmdline tool
+// generate this request.
 #include <stdio.h>
 #include <modbus.h>
 #include <errno.h>

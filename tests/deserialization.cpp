@@ -4,6 +4,7 @@
 #include <modbus/tcp.hpp>
 #include <modbus/impl/deserialize_base.hpp>
 #include <modbus/impl/deserialize_request.hpp>
+#include <modbus/impl/deserialize_response.hpp>
 
 
 void print_bytes(std::span<uint8_t> data){
@@ -221,6 +222,151 @@ int main(){
         expect(request.address == 14);
         expect(request.and_mask == 15);
         expect(request.or_mask == 16);
+    };
+
+
+    // ATH, mbpoll -r parameter is from 1 but the modbus addresses
+    // are from 0. So the address 1 in mbpoll is 0 in modbus.
+
+    "deserialize response read_coils"_test = [](){
+        // Request captured from mbpoll cli program.
+        // mbpoll localhost -p 502 -m tcp -l 4000 -c 15 -a 56 -t 0 -r 15
+        auto data = std::array<uint8_t, 11> {0x0, 0x1, 0x0, 0x0, 0x0, 0x5, 0x38, 0x1, 0x2, 0xaa, 0x2a};
+
+        auto expected_response = deserialize_response(std::span(data).subspan(modbus::tcp_mbap::size), modbus::function_t::read_coils);
+        expect(expected_response.has_value());
+        expect(holds_alternative<modbus::response::read_coils>(expected_response.value()));
+        auto response = std::get<modbus::response::read_coils>(expected_response.value());
+        expect(response.function == modbus::function_t::read_coils);
+
+        // This should be 16 because you cannot send 15 bits over the wire
+        expect(response.values.size() == 16) << response.values.size();
+        for(int i = 0; i < 15; i++){
+            expect(response.values[i] == i % 2 == 1) << response.values[i];
+        }
+    };
+
+    "deserialize response read_discrete_inputs"_test = [](){
+        //// Request captured from mbpoll cli program.
+        //// mbpoll localhost -p 502 -m tcp -l 4000 -c 15 -a 56 -t 1
+        auto data = std::array<uint8_t, 11> {0x0, 0x1, 0x0, 0x0, 0x0, 0x5, 0x38, 0x2, 0x2, 0xaa, 0x2a};
+
+        auto expected_response = deserialize_response(std::span(data).subspan(modbus::tcp_mbap::size), modbus::function_t::read_discrete_inputs);
+        expect(expected_response.has_value());
+        expect(holds_alternative<modbus::response::read_discrete_inputs>(expected_response.value()));
+        auto response = std::get<modbus::response::read_discrete_inputs>(expected_response.value());
+        expect(response.function == modbus::function_t::read_discrete_inputs);
+        // Size 16 because you cant send 15 bits over the wire
+        expect(response.values.size() == 16);
+        for(int i = 0; i < 15; i++){
+            expect(response.values[i] == i % 2 == 1);
+        }
+    };
+
+    "deserialize header & response read_holding_registers"_test = [](){
+        // Request captured from mbpoll cli program.
+        // mbpoll localhost -p 502 -m tcp -l 4000 -c 15 -a 56
+        auto data = std::array<uint8_t, 39> {0x0, 0x1, 0x0, 0x0, 0x0, 0x21, 0x38, 0x3, 0x1e, 0x0, 0x0, 0x0, 0x1, 0x0, 0x2, 0x0, 0x3, 0x0, 0x4, 0x0, 0x5, 0x0, 0x6, 0x0, 0x7, 0x0, 0x8, 0x0, 0x9, 0x0, 0xa, 0x0, 0xb, 0x0, 0xc, 0x0, 0xd, 0x0, 0xe};
+
+        auto header = modbus::tcp_mbap::from_bytes(data);
+        expect(header.transaction == 1);
+        expect(header.protocol == 0);
+        expect(header.length == data.size() - modbus::tcp_mbap::size + 1);
+        expect(header.unit == 56);
+
+        auto expected_request = deserialize_response(std::span(data).subspan(modbus::tcp_mbap::size), modbus::function_t::read_holding_registers);
+        expect(expected_request.has_value());
+        expect(holds_alternative<modbus::response::read_holding_registers>(expected_request.value()));
+        auto request = std::get<modbus::response::read_holding_registers>(expected_request.value());
+        expect(request.function == modbus::function_t::read_holding_registers);
+        expect(request.values.size() == 15);
+        for (int i = 0; i < request.values.size(); i++){
+            expect(request.values[i] == i) << request.values[i] << " " << i;
+        }
+    };
+    "deserialize response read_input_registers"_test = [](){
+        // Request captured from mbpoll cli program.
+        // mbpoll localhost -p 502 -m tcp -l 4000 -c 15 -a 56 -t 3
+        auto data = std::array<uint8_t, 39> {0x0, 0x2, 0x0, 0x0, 0x0, 0x21, 0x38, 0x4, 0x1e, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
+
+
+        auto expected_response= deserialize_response(std::span(data).subspan(modbus::tcp_mbap::size), modbus::function_t::read_input_registers);
+        expect(expected_response.has_value());
+        expect(holds_alternative<modbus::response::read_input_registers>(expected_response.value()));
+        auto response = std::get<modbus::response::read_input_registers>(expected_response.value());
+        expect(response.function == modbus::function_t::read_input_registers);
+        expect(response.values.size() == 15) << response.values.size();
+        for(int i = 0; i < response.values.size(); i++){
+            expect(!response.values[i]);
+        }
+    };
+    "deserialize response write_single_coil"_test = [](){
+        // Request captured from mbpoll cli program.
+        // mbpoll localhost -p 502 -m tcp -l 4000 -a 56 -t 0 -r 15 0
+        auto data = std::array<uint8_t, 12> {0x0, 0x1, 0x0, 0x0, 0x0, 0x6, 0x38, 0x5, 0x0, 0xe, 0x0, 0x0};
+
+        auto expected_response = deserialize_response(std::span(data).subspan(modbus::tcp_mbap::size), modbus::function_t::write_single_coil);
+        expect(expected_response.has_value());
+        expect(holds_alternative<modbus::response::write_single_coil>(expected_response.value()));
+        auto response = std::get<modbus::response::write_single_coil>(expected_response.value());
+        expect(response.function == modbus::function_t::write_single_coil);
+        expect(response.address == 14);
+        expect(response.value == false);
+    };
+
+    "deserialize response write_single_register"_test = [](){
+        // Request captured from mbpoll cli program.
+        // mbpoll localhost -p 502 -m tcp -l 4000 -a 56 -t 4 -r 15 1556
+        auto data = std::array<uint8_t, 12> {0x0, 0x1, 0x0, 0x0, 0x0, 0x6, 0x38, 0x6, 0x0, 0xe, 0x6, 0x14};
+
+        auto expected_response = deserialize_response(std::span(data).subspan(modbus::tcp_mbap::size), modbus::function_t::write_single_register);
+        expect(expected_response.has_value());
+        expect(holds_alternative<modbus::response::write_single_register>(expected_response.value()));
+        auto response = std::get<modbus::response::write_single_register>(expected_response.value());
+        expect(response.function == modbus::function_t::write_single_register);
+        expect(response.address == 14);
+        expect(response.value == 1556);
+    };
+
+    "deserialize response write_multiple_coils"_test = [](){
+        // Request captured from mbpoll cli program.
+        // mbpoll localhost -p 502 -m tcp -l 4000 -a 56 -t 0 -r 15 1 0 1 0 1 0 1 0 1 0
+        auto data = std::array<uint8_t, 12> {0x0, 0x1, 0x0, 0x0, 0x0, 0x6, 0x38, 0xf, 0x0, 0xe, 0x0, 0xa};
+
+        auto expected_response = deserialize_response(std::span(data).subspan(modbus::tcp_mbap::size), modbus::function_t::write_multiple_coils);
+        expect(expected_response.has_value());
+        expect(holds_alternative<modbus::response::write_multiple_coils>(expected_response.value()));
+        auto request = std::get<modbus::response::write_multiple_coils>(expected_response.value());
+        expect(request.function == modbus::function_t::write_multiple_coils);
+        expect(request.address == 14);
+        expect(request.count == 10);
+    };
+    "deserialize response write_multiple_registers"_test = [](){
+        // Request captured from mbpoll cli program.
+        // mbpoll localhost -p 502 -m tcp -l 4000 -a 56 -t 4 -r 15 1556 1557
+        auto data = std::array<uint8_t, 12> {0x0, 0x1, 0x0, 0x0, 0x0, 0x6, 0x38, 0x10, 0x0, 0xe, 0x0, 0x2};
+
+        auto expected_response = deserialize_response(std::span(data).subspan(modbus::tcp_mbap::size), modbus::function_t::write_multiple_registers);
+        expect(expected_response.has_value());
+        expect(holds_alternative<modbus::response::write_multiple_registers>(expected_response.value()));
+        auto response = std::get<modbus::response::write_multiple_registers>(expected_response.value());
+        expect(response.function == modbus::function_t::write_multiple_registers);
+        expect(response.address == 14);
+        expect( response.count == 2);
+    };
+
+    "deserialize response mask_write_register"_test = [](){
+        // Request captured from 'helpers/mask_write_register.c'
+        auto data = std::array<uint8_t, 14> {0x0, 0x1, 0x0, 0x0, 0x0, 0x8, 0xff, 0x16, 0x0, 0xe, 0x0, 0xf, 0x0, 0x10};
+
+        auto expected_response = deserialize_response(std::span(data).subspan(modbus::tcp_mbap::size), modbus::function_t::mask_write_register);
+        expect(expected_response.has_value());
+        expect(holds_alternative<modbus::response::mask_write_register>(expected_response.value()));
+        auto response = std::get<modbus::response::mask_write_register>(expected_response.value());
+        expect(response.function == modbus::function_t::mask_write_register);
+        expect(response.address == 14);
+        expect(response.and_mask == 15);
+        expect(response.or_mask == 16);
     };
     return 0;
 }

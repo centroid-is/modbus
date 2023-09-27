@@ -26,6 +26,7 @@
 #pragma once
 
 #include <atomic>
+#include <expected>
 #include <cstdint>
 #include <functional>
 #include <unordered_map>
@@ -54,39 +55,15 @@ using asio::async_compose;
 using tcp = ip::tcp;
 
 namespace modbus {
-
-
 /// A connection to a Modbus server.
     class client {
-    public:
-        /// Callback to invoke for IO errors that cants be linked to a specific transaction.
-        /**
-         * Additionally the connection will be closed and every transaction callback will be called with an EOF error.
-         */
-        std::function<void(std::error_code const &)> on_io_error;
-
     protected:
-        /// Low level message handler.
-        using Callback = std::function<void(std::error_code const &, response::responses const &, tcp_mbap const &)>;
-
-        /// Struct to hold transaction details.
-        struct transaction_t {
-            function_t function;
-            Callback handler;
-        };
-
         /// Strand to use to prevent concurrent handler execution.
         asio::io_context &ctx;
 
         /// The socket to use.
         tcp::socket socket;
 
-        /// Buffer for read operations.
-        std::array<uint8_t, 253> read_buffer;
-        std::array<uint8_t, 7> header_buffer;
-
-        /// Transaction table to keep track of open transactions.
-        std::unordered_map<int, transaction_t> transactions;
 
         /// Next transaction ID.
         std::uint16_t next_id = 0;
@@ -133,13 +110,6 @@ namespace modbus {
                     socket.set_option(no_delay_option);
                     socket.set_option(keep_alive_option);
 
-                    for (auto &transaction: transactions) {
-                        transaction.second.handler(make_error_code(asio::error::operation_aborted), {}, {});
-                    }
-                    transactions.clear();
-
-                    co_spawn(ctx, process_loop(), asio::detached);
-
                     self.complete({});
 
                     co_return;
@@ -161,12 +131,6 @@ namespace modbus {
             _connected = false;
         }
 
-        /// Reset the client.
-        /**
-         * Should be called before re-opening a connection after a previous connection was closed.
-         */
-        void reset();
-
         /// Check if the connection to the server is open.
         /**
          * \return True if the connection to the server is open.
@@ -179,14 +143,14 @@ namespace modbus {
         /// Read a number of coils from the connected server.
         template<typename CompletionToken>
         auto read_coils(std::uint8_t unit, std::uint16_t address, std::uint16_t count, CompletionToken &&token) {
-            return send_message(unit, request::read_coils{address, count}, std::forward<decltype(token)>(token));
+            return send_message<CompletionToken, response::read_coils>(unit, request::read_coils{address, count}, std::forward<decltype(token)>(token));
         }
 
         /// Read a number of discrete inputs from the connected server.
         template<typename CompletionToken>
         auto
         read_discrete_inputs(std::uint8_t unit, std::uint16_t address, std::uint16_t count, CompletionToken &&token) {
-            return send_message(unit, request::read_discrete_inputs{address, count},
+            return send_message<CompletionToken, response::read_discrete_inputs>(unit, request::read_discrete_inputs{address, count},
                                 std::forward<decltype(token)>(token));
         }
 
@@ -194,7 +158,7 @@ namespace modbus {
         template<typename CompletionToken>
         auto read_holding_registers(std::uint8_t unit, std::uint16_t address, std::uint16_t count,
                                     CompletionToken &&token) {
-            return send_message(unit, request::read_holding_registers{address, count},
+            return send_message<CompletionToken, response::read_holding_registers>(unit, request::read_holding_registers{address, count},
                                 std::forward<decltype(token)>(token));
         }
 
@@ -203,21 +167,21 @@ namespace modbus {
         template<typename CompletionToken>
         auto
         read_input_registers(std::uint8_t unit, std::uint16_t address, std::uint16_t count, CompletionToken &&token) {
-            return send_message(unit, request::read_input_registers{address, count},
+            return send_message<CompletionToken, response::read_input_registers>(unit, request::read_input_registers{address, count},
                                 std::forward<decltype(token)>(token));
         }
 
         /// Write to a single coil on the connected server.
         template<typename CompletionToken>
         auto write_single_coil(std::uint8_t unit, std::uint16_t address, bool value, CompletionToken &&token) {
-            return send_message(unit, request::write_single_coil{address, value}, std::forward<decltype(token)>(token));
+            return send_message<CompletionToken, response::write_single_coil>(unit, request::write_single_coil{address, value}, std::forward<decltype(token)>(token));
         }
 
         /// Write to a single register on the connected server.
         template<typename CompletionToken>
         auto
         write_single_register(std::uint8_t unit, std::uint16_t address, std::uint16_t value, CompletionToken &&token) {
-            return send_message(unit, request::write_single_register{address, value},
+            return send_message<CompletionToken, response::write_single_register>(unit, request::write_single_register{address, value},
                                 std::forward<decltype(token)>(token));
         }
 
@@ -225,7 +189,7 @@ namespace modbus {
         template<typename CompletionToken>
         auto write_multiple_coils(std::uint8_t unit, std::uint16_t address, std::vector<bool> values,
                                   CompletionToken &&token) {
-            return send_message(unit, request::write_multiple_coils{address, values},
+            return send_message<CompletionToken, response::write_multiple_coils>(unit, request::write_multiple_coils{address, values},
                                 std::forward<decltype(token)>(token));
         }
 
@@ -234,7 +198,7 @@ namespace modbus {
         auto
         write_multiple_registers(std::uint8_t unit, std::uint16_t address, std::vector<std::uint16_t> values,
                                  CompletionToken &&token) {
-            return send_message(unit, request::write_multiple_registers{address, values},
+            return send_message<CompletionToken, response::write_multiple_registers>(unit, request::write_multiple_registers{address, values},
                                 std::forward<decltype(token)>(token));
         }
 
@@ -248,132 +212,96 @@ namespace modbus {
         auto
         mask_write_register(std::uint8_t unit, std::uint16_t address, std::uint16_t and_mask, std::uint16_t or_mask,
                             CompletionToken &&token) {
-            return send_message(unit, request::mask_write_register{address, and_mask, or_mask},
+            return send_message<CompletionToken, response::mask_write_register>(unit, request::mask_write_register{address, and_mask, or_mask},
                                 std::forward<decltype(token)>(token));
         }
 
     protected:
-        asio::awaitable<void> process_loop() {
-            for (;;) {
-                auto [err, bytes_transferred] = co_await socket.async_read_some(
-                        asio::buffer(header_buffer, tcp_mbap::size),
-                        asio::as_tuple(asio::use_awaitable));
-                if (err) {
-                    if (on_io_error)
-                        on_io_error(err);
-                    co_return;
-                }
-
-                auto header = tcp_mbap::from_bytes(header_buffer);
-                auto [err2, bytes_transferred2] = co_await socket.async_read_some(
-                        asio::buffer(read_buffer, header.length - 1), // -1 header.unit is inside the count
-                        asio::as_tuple(asio::use_awaitable));
-                if (err2) {
-                    if (on_io_error)
-                        on_io_error(err2);
-                    co_return;
-                }
-                if (bytes_transferred2 != header.length - 1) {
-                    if (on_io_error)
-                        on_io_error(modbus_error(errc::message_size_mismatch));
-                    co_return;
-                }
-                // Parse and process all complete messages in the buffer.
-                process_message(header);
-            }
-        }
-
-        /// Allocate a transaction in the transaction table.
-        std::uint16_t allocate_transaction(function_t function, Callback handler) {
-            std::uint16_t id = ++next_id;
-            transactions.insert({id, {function, std::move(handler)}});
-            return id;
-        }
-
-        // Make a handler that deserializes a messages and passes it to the user callback.
-        void handle(auto &&callback, response::responses response, tcp_mbap const &header) {
-            // Make sure the message contains at least a function code. and a unit
-            if (header.length < 2) {
-                callback(modbus_error(errc::message_size_mismatch), response, header);
-            }
-
-            if (std::visit([&](auto res) {
-                // Function codes 128 and above are exception responses.
-                if (static_cast<uint8_t>(res.function) >= 128) {
-                    callback(modbus_error(header.length >= 3 ? errc_t(res.function) : errc::message_size_mismatch),
-                             response, header);
-                    return true;
-                }
-                return false;
-            }, response)) {
-                return;
-            }
-
-            callback({}, response, header);
-        }
-        /// Parse and process a message from the read buffer.
-        /**
-         * \return True if a message was parsed succesfully, false if there was not enough data.
-         */
-        bool process_message(tcp_mbap const &header) {
-            auto function = static_cast<function_t>(read_buffer[0]);
-            auto ex_response = impl::deserialize_response(read_buffer, function);
-
-            // Handle deserialization errors in TCP MBAP.
-            // Cant send an error to a specific transaction and can't continue to read from the connection.
-            if (!ex_response) {
-                if (on_io_error)
-                    on_io_error(ex_response.error());
-                return false;
-            }
-            auto response = ex_response.value();
-
-            auto transaction = transactions.find(header.transaction);
-            if (transaction == transactions.end()) {
-                // TODO: Transaction not found. Possibly call on_io_error?
-                std::cerr << "Modbus client.cpp transaction not found!" << std::endl;
-                return false;
-            }
-            auto callback = transaction->second.handler;
-            if (function != transaction->second.function) {
-                // TODO: Make this better
-                throw std::runtime_error("Modbus client.cpp function mismatch!");
-            }
-
-            handle(callback, response, header);
-
-            transactions.erase(transaction);
-
-            return true;
-        }
-
         /// Send a Modbus request to the server.
-        template<typename CompletionToken>
+        template<typename CompletionToken, typename ResponseType>
         auto send_message(std::uint8_t unit,
-                          auto const &&request,
+                          auto const request,
                           CompletionToken &&token) {
-            return async_compose < CompletionToken, void(
-                    std::error_code const&, response::responses const&, tcp_mbap const &)>([&](
+            return async_compose<CompletionToken, void(std::expected<ResponseType, std::error_code>)>([&, request](
                     auto &self) {
-                co_spawn(ctx,
-                         [&, self = std::move(self), request = std::move(request)]() mutable -> asio::awaitable<void> {
-                             tcp_mbap resp_header;
-                             resp_header.transaction = allocate_transaction(request.function, [self = std::move(self)](
-                                     std::error_code &error, response::responses response, tcp_mbap header) mutable {
-                                 self.complete(error, response, header);
-                             });
-                             resp_header.protocol = 0;
-                             resp_header.length = request.length() + 1;
-                             resp_header.unit = unit;
+                co_spawn(
+                        ctx,
+                        [&, self = std::move(self), request = std::move(request)]() mutable -> asio::awaitable<void> {
+                            tcp_mbap request_header;
+                            request_header.transaction = ++next_id;
+                            request_header.protocol = 0;
+                            request_header.length = request.length() + 1;
+                            request_header.unit = unit;
 
-                             auto header_encoded = resp_header.to_bytes();
-                             auto request_serialized = impl::serialize_request(request);
+                            auto header_encoded = request_header.to_bytes();
+                            auto request_serialized = impl::serialize_request(request);
 
-                             std::vector<asio::const_buffer> buffers{
-                                     {asio::buffer(header_encoded), asio::buffer(request_serialized)}};
+                            std::vector<asio::const_buffer> buffers{
+                                    {asio::buffer(header_encoded), asio::buffer(request_serialized)}};
 
-                             co_await asio::async_write(socket, buffers, asio::use_awaitable);
-                         }, asio::detached);
+                            co_await asio::async_write(socket, buffers, asio::use_awaitable);
+
+                            /// Buffer for read operations.
+                            std::array<uint8_t, 7> header_buffer{};
+                            // Read the response
+                            auto [header_error, bytes_transferred] = co_await socket.async_read_some(
+                                    asio::buffer(header_buffer, tcp_mbap::size),
+                                    asio::as_tuple(asio::use_awaitable));
+                            if (header_error) {
+                                self.complete(std::unexpected(header_error));
+                                co_return;
+                            }
+                            auto header = tcp_mbap::from_bytes(header_buffer);
+
+                            // Make sure the message contains at least a function code. and a unit
+                            if (header.length < 2) {
+                                self.complete(std::unexpected(modbus_error(errc::message_size_mismatch)));
+                                co_return;
+                            }
+
+                            std::array<uint8_t, 253> read_buffer{};
+                            auto [body_error, size_of_body] = co_await socket.async_read_some(
+                                    asio::buffer(read_buffer, header.length - 1), // -1 header.unit is inside the count
+                                    asio::as_tuple(asio::use_awaitable));
+                            if (body_error) {
+                                self.complete(std::unexpected(body_error));
+                                co_return;
+                            }
+                            if (size_of_body != header.length - 1) {
+                                self.complete(std::unexpected(modbus_error(errc::message_size_mismatch)));
+                                co_return;
+                            }
+                            // Parse and process all complete messages in the buffer.
+                            auto function = static_cast<function_t>(read_buffer[0]);
+
+                            auto response = impl::deserialize_response(read_buffer, function);
+
+                            // Handle deserialization errors in TCP MBAP.
+                            // Cant send an error to a specific transaction and can't continue to read from the connection.
+                            if (!response) {
+                                self.complete(std::unexpected(response.error()));
+                                co_return;
+                            }
+                            if (std::visit([&](auto res) {
+                                // Function codes 128 and above are exception responses.
+                                if (static_cast<uint8_t>(res.function) >= 128) {
+                                    self.complete(std::unexpected(modbus_error(
+                                            header.length >= 3 ? errc_t(res.function) : errc::message_size_mismatch)
+                                    ));
+                                    return true;
+                                }
+                                return false;
+                            }, response.value())) {
+                                co_return;
+                            }
+
+                            auto* value = std::get_if<ResponseType>(&response.value());
+                            if (value){
+                                self.complete(std::move(*value));
+                            } else {
+                                self.complete(std::unexpected(modbus_error(errc::unexpected_function_code)));
+                            }
+                        }, asio::detached);
             }, token, ctx);
         }
     };

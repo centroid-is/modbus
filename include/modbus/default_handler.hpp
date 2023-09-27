@@ -6,7 +6,7 @@
 //TODO: Create a simpler default handler and write tests for both
 struct default_handler {
     default_handler()
-            : registers_(0x20000), coils_(0x20000) {}
+            : registers_(0x20000), coils_(0x20000), input_registers_(0x20000), desc_input(0x20000) {}
 
     modbus::response::read_coils handle(uint8_t, const modbus::request::read_coils& req, modbus::errc_t& modbus_error) {
         modbus::response::read_coils resp;
@@ -20,7 +20,11 @@ struct default_handler {
 
     modbus::response::read_discrete_inputs handle(uint8_t, const modbus::request::read_discrete_inputs& req, modbus::errc_t& modbus_error) {
         modbus::response::read_discrete_inputs resp;
-        resp.values.resize(req.count);
+        resp.values.insert(
+                resp.values.end(),
+                desc_input.cbegin() + req.address,
+                desc_input.cbegin() + req.address + req.count
+                );
         return resp;
     }
 
@@ -91,5 +95,7 @@ struct default_handler {
         return resp;
     }
     std::vector<std::uint16_t> registers_;
+    std::vector<std::uint16_t> input_registers_;
     std::vector<bool> coils_;
+    std::vector<bool> desc_input;
 };

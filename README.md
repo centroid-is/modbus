@@ -34,6 +34,8 @@ For more examples see [examples](examples/) directory.
 - Serial support
 - verify functionality on big endian systems
 - conformance test
+- Multiple outstanding transactions for clients.
+    Currently, the client only supports a single outstanding connection at a time.
 
 # Modbus specification links
 - Application protocol [https://www.modbus.org/docs/Modbus_Application_Protocol_V1_1b3.pdf](https://www.modbus.org/docs/Modbus_Application_Protocol_V1_1b3.pdf)
