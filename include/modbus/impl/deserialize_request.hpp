@@ -4,6 +4,7 @@
 
 #include <expected>
 #include <ranges>
+#include <span>
 
 #include <modbus/impl/deserialize_base.hpp>
 #include <modbus/request.hpp>

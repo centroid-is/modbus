@@ -1,10 +1,9 @@
 #include <array>
-
-#include <boost/ut.hpp>
 #include <modbus/server.hpp>
 #include <modbus/client.hpp>
 #include <modbus/default_handler.hpp>
 
+#include <boost/ut.hpp>
 
 namespace asio = boost::asio;
 

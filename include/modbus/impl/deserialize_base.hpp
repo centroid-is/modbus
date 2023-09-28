@@ -29,6 +29,7 @@
 #include <cassert>
 #include <cstdint>
 #include <expected>
+#include <span>
 #include <string>
 #include <system_error>
 #include <vector>

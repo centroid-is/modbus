@@ -4,9 +4,10 @@
 
 #include <expected>
 #include <ranges>
+#include <span>
 
-#include "deserialize_base.hpp"
-#include "modbus/response.hpp"
+#include <modbus/impl/deserialize_base.hpp>
+#include <modbus/response.hpp>
 
 namespace modbus::impl {
 auto response_from_function(function_e func) -> std::expected<response::responses, std::error_code> {
