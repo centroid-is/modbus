@@ -33,3 +33,21 @@ endif()
 if(BUILD_TESTS)
   add_subdirectory(tests)
 endif()
+
+# Clang format all files
+file(GLOB_RECURSE ALL_SOURCE_FILES src/**/*.cpp include/**/*.hpp)
+add_custom_target(
+        clangformat-fix
+        COMMAND clang-format
+        --style=file
+        -i
+        ${ALL_SOURCE_FILES}
+)
+add_custom_target(
+        clangformat-dry
+        COMMAND clang-format
+        --style=file
+        -i
+        --dry-run
+        ${ALL_SOURCE_FILES}
+)

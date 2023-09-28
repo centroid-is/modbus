@@ -31,11 +31,11 @@ namespace {
     /// Error category for modbus errors.
     class modbus_category_t : public std::error_category {
         /// Get the name of the error category
-        char const *name() const noexcept override { return "modbus"; }
+        [[nodiscard]] auto name() const noexcept -> char const * override { return "modbus"; }
 
         /// Get a descriptive error message for an error code.
-        std::string message(int error) const noexcept override {
-            switch (errc::errc_t(error)) {
+        [[nodiscard]] auto message(int error) const noexcept -> std::string override {
+            switch (static_cast<errc::errc_t>(error)) {
                 case errc::no_error:                                 return "error 00: No error - internal";
                 case errc::illegal_function:                         return "error 01: Illegal function";
                 case errc::illegal_data_address:                     return "error 02: Illegal data address";
@@ -54,10 +54,10 @@ namespace {
 
             return "unknown error: " + std::to_string(error);
         }
-    } modbus_category_;
+    } modbus_category_instance;
 } // namespace
 
 /// The error category for modbus errors.
-std::error_category const &modbus_category() { return modbus_category_; }
+auto modbus_category() -> std::error_category const & { return modbus_category_instance; }
 
 } // namespace modbus

@@ -18,8 +18,8 @@ int main() {
     int port = 15502;
     asio::io_context ctx;
 
-    auto handler = std::make_shared<default_handler>();
-    modbus::server<default_handler> server{ctx, handler, port};
+    auto handler = std::make_shared<modbus::default_handler>();
+    modbus::server<modbus::default_handler> server{ctx, handler, port};
     server.start();
 
     modbus::client client{ctx};
@@ -30,7 +30,7 @@ int main() {
         co_spawn(ctx, [&]() mutable -> asio::awaitable<void> {
             auto connect_error = co_await client.connect("localhost", std::to_string(port), asio::use_awaitable);
             expect(!connect_error);
-            handler->registers_[5] = 55;
+            handler->registers[5] = 55;
             auto res = co_await client.read_holding_registers(0, 5, 1, asio::use_awaitable);
             expect(res.has_value());
             expect(res.value().values.size() == 1);
@@ -38,7 +38,7 @@ int main() {
 
             auto write = co_await client.write_single_register(0, 5, 54, asio::use_awaitable);
             expect(write.has_value());
-            expect(handler->registers_[5] == 54);
+            expect(handler->registers[5] == 54);
             finished = true;
             co_return;
         }, asio::detached);

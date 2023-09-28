@@ -23,5 +23,6 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
-#include "deserialize_request.hpp"
-#include "deserialize_response.hpp"
+
+#include <modbus/impl/deserialize_request.hpp>
+#include <modbus/impl/deserialize_response.hpp>

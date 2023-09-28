@@ -4,7 +4,7 @@
 #include <thread>
 #include <vector>
 
-#include "modbus/client.hpp"
+#include <modbus/client.hpp>
 
 void on_io_error(std::error_code const &error) { std::cout << "Read error: " << error.message() << "\n"; }
 
@@ -15,49 +15,49 @@ int main(int argc, const char **argv) {
     }
 
     std::vector<std::thread> pool;
-    asio::io_context io_context;
+    boost::asio::io_context ctx;
 
     std::string_view hostname = argv[1];
     std::string_view port = argv[2];
 
-    modbus::client client{io_context};
+    modbus::client client{ctx};
 
-    co_spawn(io_context, [&]() mutable -> asio::awaitable<void> {
-        auto error = co_await client.connect(std::string(hostname), std::string(port), asio::use_awaitable);
+    co_spawn(ctx, [&]() -> boost::asio::awaitable<void> {
+        auto error = co_await client.connect(std::string(hostname), std::string(port), boost::asio::use_awaitable);
         if (error) {
-            std::cerr << "Error connecting: " << error.message() << std::endl;
+            std::cerr << "Error connecting: " << error.message() << '\n';
             exit(-1);
         }
-        std::cout << "Connected!" << std::endl;
+        std::cout << "Connected!" << '\n';
 
-        auto response = co_await client.read_holding_registers(0, 0, 15,
-                                                               asio::use_awaitable);
-        if (!response) {
-            std::cerr << "Error reading: " << response.error().message() << std::endl;
-            exit(-1);
-        }
-        std::cout << "Read registers"<< std::endl;
-        for (unsigned short i: response->values) {
-            std::cout << "\t"
-                      << " " << i << "\n";
-        }
+        for (size_t i = 0; i < 25; i++ ) {
 
-        auto coils_response = co_await client.read_coils(0, 0, 15,
-                                                         asio::use_awaitable);
-        if (!coils_response) {
-            std::cerr << "Error reading: " << coils_response.error().message() << std::endl;
-            exit(-1);
+            auto response = co_await client.read_holding_registers(0, 0, 15,
+                                                                   boost::asio::use_awaitable);
+            if (!response) {
+                std::cerr << "Error reading: " << response.error().message() << '\n';
+                exit(-1);
+            }
+            std::cout << "Read registers: ";
+            for (unsigned short i: response->values) {
+                std::cout << "\t\t" << i << " ";
+            }
+            std::cout << "\n";
+            auto coils_response = co_await client.read_coils(0, 0, 15,
+                                                             boost::asio::use_awaitable);
+            if (!coils_response) {
+                std::cerr << "Error reading: " << coils_response.error().message() << '\n';
+                exit(-1);
+            }
+            std::cout << "Read coils: ";
+            for (unsigned short i: coils_response->values) {
+                std::cout << "\t" << (i ? "true" : "false") << " ";
+            }
+            std::cout << '\n';
+            std::this_thread::sleep_for(std::chrono::milliseconds {150});
         }
-        std::cout << "Read coils" << std::endl;
-        for (unsigned short i: coils_response->values) {
-            std::cout << "\t"
-                      << " " << i << "\n";
-        }
-
         client.close();
-    }, asio::detached);
+    }, boost::asio::detached);
 
-
-    io_context.run();
-
+    ctx.run();
 }

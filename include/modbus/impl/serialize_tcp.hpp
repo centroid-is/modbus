@@ -23,32 +23,32 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
-#include "serialize_base.hpp"
-#include "modbus/tcp.hpp"
+#include <modbus/impl/serialize_base.hpp>
+#include <modbus/tcp.hpp>
 
-namespace modbus {
-namespace impl {
+namespace modbus::impl {
 
-    /// Serialize a TCP MBAP.
-    template <typename OutputIterator> std::size_t serialize(OutputIterator &out, tcp_mbap const &header) {
-        std::size_t written = 0;
-        written += serialize_be16(out, header.transaction);
-        written += serialize_be16(out, header.protocol);
-        written += serialize_be16(out, header.length);
-        written += serialize_be8(out, header.unit);
-        return written;
-    }
+/// Serialize a TCP MBAP.
+template <typename output_iterator>
+auto serialize(output_iterator& out, tcp_mbap const& header) -> std::size_t {
+  std::size_t written = 0;
+  written += serialize_be16(out, header.transaction);
+  written += serialize_be16(out, header.protocol);
+  written += serialize_be16(out, header.length);
+  written += serialize_be8(out, header.unit);
+  return written;
+}
 
-    /// Serialize a TCP PDU.
-    template <typename OutputIterator, typename T> std::size_t serialize(OutputIterator &out, tcp_pdu<T> const &pdu) {
-        std::size_t written = 0;
+/// Serialize a TCP PDU.
+template <typename output_iterator, typename t>
+auto serialize(output_iterator& out, tcp_pdu<t> const& pdu) -> std::size_t {
+  std::size_t written = 0;
 
-        // Serialize MBAP followed by ADU.
-        written += serialize(out, static_cast<tcp_mbap const &>(pdu));
-        written += serialize(out, static_cast<T const &>(pdu));
+  // Serialize MBAP followed by ADU.
+  written += serialize(out, static_cast<tcp_mbap const&>(pdu));
+  written += serialize(out, static_cast<t const&>(pdu));
 
-        return written;
-    }
+  return written;
+}
 
-} // namespace impl
-} // namespace modbus
+}  // namespace modbus::impl

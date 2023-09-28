@@ -28,9 +28,9 @@
 #include <cstdint>
 #include <vector>
 
-#include "functions.hpp"
-#include "impl/deserialize_base.hpp"
-#include "impl/serialize_base.hpp"
+#include <modbus/functions.hpp>
+#include <modbus/impl/deserialize_base.hpp>
+#include <modbus/impl/serialize_base.hpp>
 
 namespace modbus {
 
@@ -44,7 +44,7 @@ namespace modbus {
         struct write_multiple_coils;
         struct write_multiple_registers;
         struct mask_write_register;
-    } // namespace response
+    }  // namespace response
 
     namespace request {
 
@@ -54,7 +54,7 @@ namespace modbus {
             using response = response::read_coils;
 
             /// The function code.
-            static constexpr function_t function = function_t::read_coils;
+            static constexpr function_e function = function_e::read_coils;
 
             /// The address of the first coil/register to read from.
             std::uint16_t address;
@@ -63,9 +63,9 @@ namespace modbus {
             std::uint16_t count;
 
             /// The length of the serialized ADU in bytes.
-            [[nodiscard]] static std::size_t length() { return 5; }
+            [[nodiscard]] static auto length() -> std::size_t { return 5; }
 
-            [[nodiscard]] std::vector<uint8_t> serialize() const {
+            [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
                 std::vector<uint8_t> ret_value;
 
                 ret_value.emplace_back(impl::serialize_function(function));
@@ -79,10 +79,10 @@ namespace modbus {
             }
 
             /// Deserialize request.
-            [[nodiscard]]
-            std::error_code deserialize(std::ranges::range auto data) {
-                if (auto error = impl::check_length(data.size(), length()))
+            [[nodiscard]] auto deserialize(std::ranges::range auto data) -> std::error_code {
+                if (auto error = impl::check_length(data.size(), length())) {
                     return error;
+                }
                 address = impl::deserialize_be16(std::span(data).subspan(1, 2));
                 count = impl::deserialize_be16(std::span(data).subspan(3, 2));
                 return {};
@@ -95,7 +95,7 @@ namespace modbus {
             using response = response::read_discrete_inputs;
 
             /// The function code.
-            static constexpr function_t function = function_t::read_discrete_inputs;
+            static constexpr function_e function = function_e::read_discrete_inputs;
 
             /// The address of the first coil/register to read from.
             std::uint16_t address;
@@ -104,9 +104,9 @@ namespace modbus {
             std::uint16_t count;
 
             /// The length of the serialized ADU in bytes.
-            [[nodiscard]] static std::size_t length() { return 5; }
+            [[nodiscard]] static auto length() -> std::size_t { return 5; }
 
-            [[nodiscard]] std::vector<uint8_t> serialize() const {
+            [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
                 std::vector<uint8_t> ret_value;
 
                 ret_value.emplace_back(impl::serialize_function(function));
@@ -120,10 +120,10 @@ namespace modbus {
             }
 
             /// Deserialize request.
-            [[nodiscard]]
-            std::error_code deserialize(std::ranges::range auto data) {
-                if(auto error = impl::check_length(data.size(), length()))
+            [[nodiscard]] auto deserialize(std::ranges::range auto data) -> std::error_code {
+                if (auto error = impl::check_length(data.size(), length())) {
                     return error;
+                }
                 address = impl::deserialize_be16(std::span(data).subspan(1, 2));
                 count = impl::deserialize_be16(std::span(data).subspan(3, 2));
                 return {};
@@ -136,7 +136,7 @@ namespace modbus {
             using response = response::read_holding_registers;
 
             /// The function code.
-            static constexpr function_t function = function_t::read_holding_registers;
+            static constexpr function_e function = function_e::read_holding_registers;
 
             /// The address of the first coil/register to read from.
             std::uint16_t address;
@@ -145,9 +145,9 @@ namespace modbus {
             std::uint16_t count;
 
             /// The length of the serialized ADU in bytes.
-            [[nodiscard]] static std::size_t length() { return 5; }
+            [[nodiscard]] static auto length() -> std::size_t { return 5; }
 
-            [[nodiscard]] std::vector<uint8_t> serialize() const {
+            [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
                 std::vector<uint8_t> ret_value;
 
                 ret_value.emplace_back(impl::serialize_function(function));
@@ -161,10 +161,10 @@ namespace modbus {
             }
 
             /// Deserialize request.
-            [[nodiscard]]
-            std::error_code deserialize(std::ranges::range auto data) {
-                if(auto error = impl::check_length(data.size(), length()))
+            [[nodiscard]] auto deserialize(std::ranges::range auto data) -> std::error_code {
+                if (auto error = impl::check_length(data.size(), length())) {
                     return error;
+                }
                 address = impl::deserialize_be16(std::span(data).subspan(1, 2));
                 count = impl::deserialize_be16(std::span(data).subspan(3, 2));
                 return {};
@@ -177,7 +177,7 @@ namespace modbus {
             using response = response::read_input_registers;
 
             /// The function code.
-            static constexpr function_t function = function_t::read_input_registers;
+            static constexpr function_e function = function_e::read_input_registers;
 
             /// The address of the first coil/register to read from.
             std::uint16_t address;
@@ -186,9 +186,9 @@ namespace modbus {
             std::uint16_t count;
 
             /// The length of the serialized ADU in bytes.
-            [[nodiscard]] static std::size_t length() { return 5; }
+            [[nodiscard]] static auto length() -> std::size_t { return 5; }
 
-            [[nodiscard]] std::vector<uint8_t> serialize() const {
+            [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
                 std::vector<uint8_t> ret_value;
 
                 ret_value.emplace_back(impl::serialize_function(function));
@@ -202,10 +202,10 @@ namespace modbus {
             }
 
             /// Deserialize request.
-            [[nodiscard]]
-            std::error_code deserialize(std::ranges::range auto data) {
-                if(auto error = impl::check_length(data.size(), length()))
+            [[nodiscard]] auto deserialize(std::ranges::range auto data) -> std::error_code {
+                if (auto error = impl::check_length(data.size(), length())) {
                     return error;
+                }
                 address = impl::deserialize_be16(std::span(data).subspan(1, 2));
                 count = impl::deserialize_be16(std::span(data).subspan(3, 2));
                 return {};
@@ -218,7 +218,7 @@ namespace modbus {
             using response = response::write_single_coil;
 
             /// The function code.
-            static constexpr function_t function = function_t::write_single_coil;
+            static constexpr function_e function = function_e::write_single_coil;
 
             /// The address of the coil to write to.
             std::uint16_t address;
@@ -227,9 +227,9 @@ namespace modbus {
             bool value;
 
             /// The length of the serialized ADU in bytes.
-            [[nodiscard]] static std::size_t length() { return 5; }
+            [[nodiscard]] static auto length() -> std::size_t { return 5; }
 
-            [[nodiscard]] std::vector<uint8_t> serialize() const {
+            [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
                 std::vector<uint8_t> ret_value;
 
                 ret_value.emplace_back(impl::serialize_function(function));
@@ -243,13 +243,15 @@ namespace modbus {
             }
 
             /// Deserialize request.
-            [[nodiscard]]
-            std::error_code deserialize(std::ranges::range auto data) {
-                if(auto error = impl::check_length(data.size(), length()))
+            [[nodiscard]] auto deserialize(std::ranges::range auto data) -> std::error_code {
+                if (auto error = impl::check_length(data.size(), length())) {
                     return error;
+                }
                 address = impl::deserialize_be16(std::span(data).subspan(1, 2));
                 auto value_expected = impl::deserialize_bool(std::span(data).subspan(3, 2));
-                if (!value_expected) return value_expected.error();
+                if (!value_expected) {
+                    return value_expected.error();
+                }
                 value = value_expected.value();
                 return {};
             }
@@ -261,7 +263,7 @@ namespace modbus {
             using response = response::write_single_register;
 
             /// The function code.
-            static constexpr function_t function = function_t::write_single_register;
+            static constexpr function_e function = function_e::write_single_register;
 
             /// The address of the register to write to.
             std::uint16_t address;
@@ -270,9 +272,9 @@ namespace modbus {
             std::uint16_t value;
 
             /// The length of the serialized ADU in bytes.
-            [[nodiscard]] static std::size_t length() { return 5; }
+            [[nodiscard]] static auto length() -> std::size_t { return 5; }
 
-            [[nodiscard]] std::vector<uint8_t> serialize() const {
+            [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
                 std::vector<uint8_t> ret_value;
 
                 ret_value.emplace_back(impl::serialize_function(function));
@@ -286,10 +288,10 @@ namespace modbus {
             }
 
             /// Deserialize request.
-            [[nodiscard]]
-            std::error_code deserialize(std::ranges::range auto data) {
-                if(auto error = impl::check_length(data.size(), length()))
+            [[nodiscard]] auto deserialize(std::ranges::range auto data) -> std::error_code {
+                if (auto error = impl::check_length(data.size(), length())) {
                     return error;
+                }
                 address = impl::deserialize_be16(std::span(data).subspan(1, 2));
                 value = impl::deserialize_be16(std::span(data).subspan(3, 2));
                 return {};
@@ -302,7 +304,7 @@ namespace modbus {
             using response = response::write_multiple_coils;
 
             /// The function code.
-            static constexpr function_t function = function_t::write_multiple_coils;
+            static constexpr function_e function = function_e::write_multiple_coils;
 
             /// The address of the first coil to write to.
             std::uint16_t address;
@@ -311,9 +313,9 @@ namespace modbus {
             std::vector<bool> values;
 
             /// The length of the serialized ADU in bytes.
-            [[nodiscard]] std::size_t length() const { return 6 + (values.size() + 7) / 8; }
+            [[nodiscard]] auto length() const -> std::size_t { return 6 + (values.size() + 7) / 8; }
 
-            [[nodiscard]] std::vector<uint8_t> serialize() const {
+            [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
                 std::vector<uint8_t> ret_value;
 
                 ret_value.emplace_back(impl::serialize_function(function));
@@ -327,13 +329,15 @@ namespace modbus {
             }
 
             /// Deserialize request.
-            [[nodiscard]]
-            std::error_code deserialize(std::ranges::range auto data) {
-                if (auto error = impl::check_length(data.size(), 3))
+            [[nodiscard]] auto deserialize(std::ranges::range auto data) -> std::error_code {
+                if (auto error = impl::check_length(data.size(), 3)) {
                     return error;
+                }
                 address = impl::deserialize_be16(std::span(data).subspan(1));
                 auto expected = impl::deserialize_bits_request(std::span(data).subspan(3));
-                if (!expected) return expected.error();
+                if (!expected) {
+                    return expected.error();
+                }
                 values = expected.value();
                 return {};
             }
@@ -345,7 +349,7 @@ namespace modbus {
             using response = response::write_multiple_registers;
 
             /// The function code.
-            static constexpr function_t function = function_t::write_multiple_registers;
+            static constexpr function_e function = function_e::write_multiple_registers;
 
             /// The address of the first register to write to.
             std::uint16_t address;
@@ -354,9 +358,9 @@ namespace modbus {
             std::vector<std::uint16_t> values;
 
             /// The length of the serialized ADU in bytes.
-            [[nodiscard]] std::size_t length() const { return 6 + values.size() * 2; }
+            [[nodiscard]] auto length() const -> std::size_t { return 6 + values.size() * 2; }
 
-            [[nodiscard]] std::vector<uint8_t> serialize() const {
+            [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
                 std::vector<uint8_t> ret_value;
 
                 ret_value.emplace_back(impl::serialize_function(function));
@@ -370,13 +374,15 @@ namespace modbus {
             }
 
             /// Deserialize request.
-            [[nodiscard]]
-            std::error_code deserialize(std::ranges::range auto data) {
-                if (auto error = impl::check_length(data.size(), 3))
+            [[nodiscard]] auto deserialize(std::ranges::range auto data) -> std::error_code {
+                if (auto error = impl::check_length(data.size(), 3)) {
                     return error;
+                }
                 address = impl::deserialize_be16(std::span(data).subspan(1));
                 auto expected = impl::deserialize_words_request(std::span(data).subspan(3));
-                if (!expected) return expected.error();
+                if (!expected) {
+                    return expected.error();
+                }
                 values = expected.value();
                 return {};
             }
@@ -388,7 +394,7 @@ namespace modbus {
             using response = response::mask_write_register;
 
             /// The function code.
-            static constexpr function_t function = function_t::mask_write_register;
+            static constexpr function_e function = function_e::mask_write_register;
 
             /// The address of the register to write to.
             std::uint16_t address;
@@ -400,9 +406,9 @@ namespace modbus {
             std::uint16_t or_mask;
 
             /// The length of the serialized ADU in bytes.
-            [[nodiscard]] std::size_t length() const { return 7; }
+            [[nodiscard]] static auto length() -> std::size_t { return 7; }
 
-            [[nodiscard]] std::vector<uint8_t> serialize() const {
+            [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
                 std::vector<uint8_t> ret_value;
 
                 ret_value.emplace_back(impl::serialize_function(function));
@@ -419,10 +425,10 @@ namespace modbus {
             }
 
             /// Deserialize request.
-            [[nodiscard]]
-            std::error_code deserialize(std::ranges::range auto data) {
-                if(auto error = impl::check_length(data.size(), length()))
+            [[nodiscard]] auto deserialize(std::ranges::range auto data) -> std::error_code {
+                if (auto error = impl::check_length(data.size(), length())) {
                     return error;
+                }
                 address = impl::deserialize_be16(std::span(data).subspan(1, 2));
                 and_mask = impl::deserialize_be16(std::span(data).subspan(3, 2));
                 or_mask = impl::deserialize_be16(std::span(data).subspan(5, 2));
@@ -430,8 +436,14 @@ namespace modbus {
             }
         };
 
-        using requests = std::variant<read_coils, read_discrete_inputs, read_holding_registers, read_input_registers,
-                write_single_coil, write_single_register, write_multiple_coils,
-                write_multiple_registers, mask_write_register>;
-    } // namespace request
-} // namespace modbus
+        using requests = std::variant<read_coils,
+                read_discrete_inputs,
+                read_holding_registers,
+                read_input_registers,
+                write_single_coil,
+                write_single_register,
+                write_multiple_coils,
+                write_multiple_registers,
+                mask_write_register>;
+    }  // namespace request
+}  // namespace modbus

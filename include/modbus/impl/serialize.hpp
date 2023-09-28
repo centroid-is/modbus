@@ -3,26 +3,18 @@
 
 #pragma once
 
-#include "serialize_tcp.hpp"
+#include <modbus/impl/serialize_tcp.hpp>
 
-#include "modbus/request.hpp"
-#include "modbus/response.hpp"
+#include <modbus/request.hpp>
+#include <modbus/response.hpp>
 
-namespace modbus {
-    namespace impl {
+namespace modbus::impl {
 
-        [[nodiscard]]
-        std::vector<uint8_t> serialize_response(response::responses const &response_variant) {
-            return std::visit([](auto &response) {
-                return response.serialize();
-            }, response_variant);
-        }
-
-        [[nodiscard]]
-        std::vector<uint8_t> serialize_request(request::requests const &request_variant) {
-            return std::visit([](auto &request) {
-                return request.serialize();
-            }, request_variant);
-        }
-    }
+[[nodiscard]] auto serialize_response(response::responses const& response_variant) -> std::vector<uint8_t> {
+  return std::visit([](auto& response) { return response.serialize(); }, response_variant);
 }
+
+[[nodiscard]] auto serialize_request(request::requests const& request_variant) -> std::vector<uint8_t> {
+  return std::visit([](auto& request) { return request.serialize(); }, request_variant);
+}
+}  // namespace modbus::impl
