@@ -20,8 +20,11 @@ jobs:
         build_type: [debug, release]
         include:
         - os: ubuntu-latest
-          c-compiler: /usr/bin/gcc-12
-          cxx-compiler: /usr/bin/g++-12
+          vcpkg_target_triplet: "x64-linux-gcc"
+        - os: macos-latest
+          vcpkg_target_triplet: "x64-osx"
+        - os: windows-latest
+          vcpkg_target_triplet: "x64-windows"
     steps:
       - uses: actions/checkout@v3
       - name: Restore artifacts, or setup vcpkg
@@ -35,4 +38,4 @@ jobs:
           buildPreset: 'build-ci'
           testPreset: 'test-ci'
           configurePreset: 'conf-ci'
-          configurePresetAdditionalArgs: "['-DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake']"
+          configurePresetAdditionalArgs: "['-DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake', '-DVCPKG_TARGET_TRIPLET=${{ matrix.vcpkg_target_triplet }}']"
