@@ -30,6 +30,14 @@ auto request_from_function(function_e func) -> std::expected<request::requests, 
       return request::write_multiple_registers{};
     case function_e::mask_write_register:
       return request::mask_write_register{};
+    case function_e::read_exception_status:
+    case function_e::diagnostic:
+    case function_e::get_com_event_log:
+    case function_e::get_com_event_counter:
+    case function_e::report_server_id:
+    case function_e::read_file_record:
+    case function_e::read_write_multiple_registers:
+    case function_e::read_fifo_record:
     default:
       return std::unexpected(modbus_error(errc_t::illegal_function));
   }
