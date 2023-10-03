@@ -32,7 +32,7 @@ jobs:
         with:
           vcpkgGitCommitId: 'fbc868ee5e12e3e81f464104be246ec06553c274'
           vcpkgJsonGlob: 'vcpkg.json'
-      - run: gcc --version && gcc-12 --version
+
       - name: build with cmake
         uses: lukka/run-cmake@v10
         with:
