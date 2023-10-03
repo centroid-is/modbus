@@ -4,6 +4,7 @@
 #include <expected>
 #include <ranges>
 #include <string>
+#include <iostream>
 
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/experimental/awaitable_operators.hpp>
@@ -32,7 +33,7 @@ using asio::experimental::awaitable_operators::operator||;
 
 auto handle_request(tcp_mbap const& header, std::ranges::range auto data, auto&& handler)
     -> std::expected<std::vector<uint8_t>, modbus::errc_t> {
-  auto req_variant = impl::deserialize_request(std::span(data), static_cast<function_t>(data[0]));
+  auto req_variant = impl::deserialize_request(std::span(data), static_cast<function_e>(data[0]));
   if (!req_variant) {
     return std::unexpected(modbus::errc_t::illegal_data_value);
   }
@@ -126,7 +127,7 @@ auto handle_connection(tcp::socket client, auto&& handler) -> awaitable<void> {
       continue;
     }
 
-    auto function_code = static_cast<function_t>(request_buffer[0]);
+    auto function_code = static_cast<function_e>(request_buffer[0]);
     // Handle the request
     auto resp = handle_request(header, request_buffer, handler);
     if (resp) {

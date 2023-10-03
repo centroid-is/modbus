@@ -3,7 +3,10 @@
   "configurePresets": [
     {
       "name": "conf-ci",
-      "binaryDir": "${sourceDir}/build/${presetName}"
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "VCPKG_INSTALLED_DIR": "${fileDir}/vcpkg-sysroot"
+      }
     }
   ],
   "buildPresets": [

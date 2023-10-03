@@ -83,8 +83,9 @@ public:
 
   /// Connect to a server.
   template <typename completion_token>
-  auto connect(const std::string& hostname, const std::string& port, completion_token&& token) {
-    return async_compose<completion_token, void(std::error_code const&)>(
+  auto connect(const std::string& hostname, const std::string& port, completion_token&& token) 
+      -> asio::async_result<std::decay_t<completion_token>, void(std::error_code)>::return_type {
+    return async_compose<completion_token, void(std::error_code)>(
         [&](auto& self) {
           co_spawn(
               ctx,
@@ -224,8 +225,9 @@ protected:
           co_spawn(
               ctx,
               [&, self = std::move(self_outer), request = std::move(send_request)]() mutable -> asio::awaitable<void> {
+                assert(request.length() <= std::numeric_limits<uint16_t>::max() - 1 && "Request length too large for type");
                 tcp_mbap request_header{
-                  .transaction = ++next_id, .protocol = 0, .length = request.length() + 1, .unit = unit
+                  .transaction = ++next_id, .protocol = static_cast<uint16_t>(0), .length = static_cast<uint16_t>(request.length() + 1u), .unit = unit
                 };
 
                 auto header_encoded = request_header.to_bytes();

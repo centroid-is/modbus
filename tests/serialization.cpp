@@ -1,6 +1,7 @@
 #include <array>
 
 #include <boost/ut.hpp>
+
 #include <modbus/tcp.hpp>
 #include "modbus/impl/serialize_base.hpp"
 #include "modbus/impl/deserialize_base.hpp"

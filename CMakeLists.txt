@@ -8,6 +8,8 @@ project(modbus
     CXX
 )
 
+add_compile_definitions(BOOST_UT_DISABLE_MODULE)
+
 set(CMAKE_CXX_STANDARD 23)
 
 find_package(Boost REQUIRED)
