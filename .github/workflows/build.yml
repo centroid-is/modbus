@@ -31,4 +31,5 @@ jobs:
         with:
           buildPreset: 'build-${{ matrix.compiler }}'
           testPreset: 'test-${{ matrix.compiler }}'
+          configurePreset: 'conf-${{ matrix.compiler }}'
           configurePresetAdditionalArgs: "['-DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake']"

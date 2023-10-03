@@ -51,6 +51,11 @@
       "name": "test-gcc",
       "configurePreset": "conf-gcc",
       "inherits": ["test-common"]
+    },
+    {
+      "name": "test-clang",
+      "configurePreset": "conf-clang",
+      "inherits": ["test-common"]
     }
   ]
 }
