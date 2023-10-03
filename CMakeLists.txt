@@ -14,6 +14,9 @@ set(CMAKE_CXX_STANDARD 23)
 
 find_package(Boost REQUIRED)
 
+set_property(GLOBAL PROPERTY CTEST_TARGETS_ADDED 1)
+include(CTest)
+
 include(FeatureSummary)
 
 option(BUILD_TESTS "Indicates whether tests should be built." ON)
