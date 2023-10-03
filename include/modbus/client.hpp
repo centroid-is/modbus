@@ -264,7 +264,7 @@ protected:
                   self.complete(std::unexpected(body_error));
                   co_return;
                 }
-                if (size_of_body != header.length - 1) {
+                if (size_of_body + 1 != static_cast<size_t>(header.length)) {
                   self.complete(std::unexpected(modbus_error(errc::message_size_mismatch)));
                   co_return;
                 }
