@@ -12,12 +12,8 @@ concurrency:
 jobs:
   build:
     name: 'build'
-    runs-on: ${{matrix.os}}
+    runs-on: ubuntu-latest
     container: ghcr.io/skaginn3x/skaginn3x/framework/tfc-toolchain:sha-f8ab815
-    strategy:
-      fail-fast: false
-      matrix:
-        build_type: [debug, release]
 
     steps:
       - uses: actions/checkout@v3
@@ -33,4 +29,4 @@ jobs:
           buildPreset: 'build-ci'
           testPreset: 'test-ci'
           configurePreset: 'conf-ci'
-          configurePresetAdditionalArgs: "['-DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake', '-DVCPKG_TARGET_TRIPLET=x64-linux-gcc']"
+          configurePresetAdditionalArgs: "['-DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake']"
