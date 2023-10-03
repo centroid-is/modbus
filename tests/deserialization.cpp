@@ -242,7 +242,7 @@ int main(){
         // This should be 16 because you cannot send 15 bits over the wire
         expect(response.values.size() == 16) << response.values.size();
         for(int i = 0; i < 15; i++){
-            expect(response.values[i] == i % 2 == 1) << response.values[i];
+            expect(response.values[i] == (i % 2 == 1)) << response.values[i];
         }
     };
 
@@ -259,7 +259,7 @@ int main(){
         // Size 16 because you cant send 15 bits over the wire
         expect(response.values.size() == 16);
         for(int i = 0; i < 15; i++){
-            expect(response.values[i] == i % 2 == 1);
+            expect(response.values[i] == (i % 2 == 1));
         }
     };
 
@@ -280,8 +280,8 @@ int main(){
         auto request = std::get<modbus::response::read_holding_registers>(expected_request.value());
         expect(request.function == modbus::function_e::read_holding_registers);
         expect(request.values.size() == 15);
-        for (int i = 0; i < request.values.size(); i++){
-            expect(request.values[i] == i) << request.values[i] << " " << i;
+        for (size_t i = 0; i < request.values.size(); i++){
+            expect(request.values[i] == static_cast<uint16_t>(i)) << request.values[i] << " " << i;
         }
     };
     "deserialize response read_input_registers"_test = [](){
@@ -296,7 +296,7 @@ int main(){
         auto response = std::get<modbus::response::read_input_registers>(expected_response.value());
         expect(response.function == modbus::function_e::read_input_registers);
         expect(response.values.size() == 15) << response.values.size();
-        for(int i = 0; i < response.values.size(); i++){
+        for(size_t i = 0; i < response.values.size(); i++){
             expect(!response.values[i]);
         }
     };
