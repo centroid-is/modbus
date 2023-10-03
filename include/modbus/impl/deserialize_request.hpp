@@ -36,6 +36,7 @@ auto request_from_function(function_e func) -> std::expected<request::requests, 
     case function_e::get_com_event_counter:
     case function_e::report_server_id:
     case function_e::read_file_record:
+    case function_e::write_file_record:
     case function_e::read_write_multiple_registers:
     case function_e::read_fifo_record:
     default:
