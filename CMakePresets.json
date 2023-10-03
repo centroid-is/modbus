@@ -18,7 +18,7 @@
   "testPresets": [
     {
       "name": "test-ci",
-      "hidden": true,
+      "hidden": false,
       "output": {"outputOnFailure": true},
       "execution": {"noTestsAction": "error", "stopOnFailure": true}
     }
