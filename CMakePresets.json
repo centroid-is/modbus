@@ -2,17 +2,42 @@
   "version": 6,
   "configurePresets": [
     {
-      "name": "conf-ci",
+      "name": "conf-base",
+      "hidden": true,
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
-        "VCPKG_INSTALLED_DIR": "${fileDir}/vcpkg-sysroot"
+        "VCPKG_INSTALLED_DIR": "${fileDir}/vcpkg-sysroot",
+        "VCPKG_OVERLAY_TRIPLETS": "${fileDir}/vcpkg-overlays/triplets",
+        "CMAKE_TOOLCHAIN_FILE": "/opt/vcpkg/scripts/buildsystems/vcpkg.cmake"
       }
+    },
+    {
+      "name": "conf-gcc",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-linux-gcc"
+      },
+      "inherits": [
+        "conf-base"
+      ]
+    },
+    {
+      "name": "conf-clang",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-linux-clang"
+      },
+      "inherits": [
+        "conf-base"
+      ]
     }
   ],
   "buildPresets": [
     {
-      "name": "build-ci",
-      "configurePreset": "conf-ci"
+      "name": "build-gcc",
+      "configurePreset": "conf-gcc"
+    },
+    {
+      "name": "build-clang",
+      "configurePreset": "conf-clang"
     }
   ],
   "testPresets": [
@@ -23,8 +48,8 @@
       "execution": {"noTestsAction": "error", "stopOnFailure": true}
     },
     {
-      "name": "test-ci",
-      "configurePreset": "conf-ci",
+      "name": "test-gcc",
+      "configurePreset": "conf-gcc",
       "inherits": ["test-common"]
     }
   ]
