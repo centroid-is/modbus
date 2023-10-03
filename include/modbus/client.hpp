@@ -59,16 +59,16 @@ using tcp = ip::tcp;
 class client {
 protected:
   /// Execution context
-  asio::io_context& ctx;
+  asio::io_context& ctx_;
 
   /// The socket to use.
-  tcp::socket socket;
+  tcp::socket socket_;
 
   /// Next transaction ID.
-  std::uint16_t next_id = 0;
+  std::uint16_t next_id_ = 0;
 
   /// Track connected state of client.
-  bool _connected{ false };
+  bool connected_{ false };
 
   /// Socket options
   asio::ip::tcp::no_delay no_delay_option{ true };
@@ -76,10 +76,10 @@ protected:
 
 public:
   /// Construct a client.
-  explicit client(asio::io_context& io_context) : ctx{ io_context }, socket{ io_context } {}
+  explicit client(asio::io_context& io_context) : ctx_{ io_context }, socket_{ io_context } {}
 
   /// Get the IO executor used by the client.
-  auto io_executor() -> tcp::socket::executor_type { return socket.get_executor(); };
+  auto io_executor() -> tcp::socket::executor_type { return socket_.get_executor(); };
 
   /// Connect to a server.
   template <typename completion_token>
@@ -88,7 +88,7 @@ public:
     return async_compose<completion_token, void(std::error_code)>(
         [&](auto& self) {
           co_spawn(
-              ctx,
+              ctx_,
               [&, self = std::move(self)]() mutable -> asio::awaitable<void> {
                 tcp::resolver resolver{ co_await asio::this_coro::executor };
                 tcp::resolver::query query{ hostname, port };
@@ -105,11 +105,11 @@ public:
                   co_return;
                 }
 
-                _connected = true;
+                connected_ = true;
 
                 // Set socket options as recommended by the modbus spec.
-                socket.set_option(no_delay_option);
-                socket.set_option(keep_alive_option);
+                socket_.set_option(no_delay_option);
+                socket_.set_option(keep_alive_option);
 
                 self.complete({});
 
@@ -117,7 +117,7 @@ public:
               },
               asio::detached);
         },
-        token, ctx);
+        token, ctx_);
   }
 
   /// Disconnect from the server.
@@ -125,22 +125,22 @@ public:
    * Any remaining transaction callbacks will be invoked with an EOF error.
    */
   void close() {
-    if (socket.is_open()) {
+    if (socket_.is_open()) {
       // Shutdown and close socket.
-      socket.shutdown(boost::asio::socket_base::shutdown_type::shutdown_both);
-      socket.close();
+      socket_.shutdown(boost::asio::socket_base::shutdown_type::shutdown_both);
+      socket_.close();
     }
-    _connected = false;
+    connected_ = false;
   }
 
   /// Check if the connection to the server is open.
   /**
    * \return True if the connection to the server is open.
    */
-  auto is_open() -> bool { return socket.is_open(); }
+  auto is_open() -> bool { return socket_.is_open(); }
 
   /// Check if the client is connected.
-  auto is_connected() -> bool { return is_open() && _connected; }
+  auto is_connected() -> bool { return is_open() && connected_; }
 
   /// Read a number of coils from the connected server.
   template <typename completion_token>
@@ -223,11 +223,11 @@ protected:
     return async_compose<completion_token, void(std::expected<response_type, std::error_code>)>(
         [&, send_request](auto& self_outer) {
           co_spawn(
-              ctx,
+              ctx_,
               [&, self = std::move(self_outer), request = std::move(send_request)]() mutable -> asio::awaitable<void> {
                 assert(request.length() <= std::numeric_limits<uint16_t>::max() - 1 && "Request length too large for type");
                 tcp_mbap request_header{
-                  .transaction = ++next_id, .protocol = static_cast<uint16_t>(0), .length = static_cast<uint16_t>(request.length() + 1u), .unit = unit
+                  .transaction = ++next_id_, .protocol = static_cast<uint16_t>(0), .length = static_cast<uint16_t>(request.length() + 1U), .unit = unit
                 };
 
                 auto header_encoded = request_header.to_bytes();
@@ -236,12 +236,12 @@ protected:
                 std::vector<asio::const_buffer> buffers{ { asio::buffer(header_encoded),
                                                            asio::buffer(request_serialized) } };
 
-                co_await asio::async_write(socket, buffers, asio::use_awaitable);
+                co_await asio::async_write(socket_, buffers, asio::use_awaitable);
 
                 /// Buffer for read operations.
                 std::array<uint8_t, tcp_mbap::size> header_buffer{};
                 // Read the response
-                auto [header_error, bytes_transferred] = co_await socket.async_read_some(
+                auto [header_error, bytes_transferred] = co_await socket_.async_read_some(
                     asio::buffer(header_buffer, tcp_mbap::size), asio::as_tuple(asio::use_awaitable));
                 if (header_error) {
                   self.complete(std::unexpected(header_error));
@@ -257,7 +257,7 @@ protected:
 
                 std::array<uint8_t, MODBUS_MAX_PDU> read_buffer{};
                 auto [body_error, size_of_body] =
-                    co_await socket.async_read_some(asio::buffer(read_buffer,
+                    co_await socket_.async_read_some(asio::buffer(read_buffer,
                                                                  header.length - 1),  // -1 header.unit is inside the count
                                                     asio::as_tuple(asio::use_awaitable));
                 if (body_error) {
@@ -301,7 +301,7 @@ protected:
               },
               asio::detached);
         },
-        token, ctx);
+        token, ctx_);
   }
 };
 
