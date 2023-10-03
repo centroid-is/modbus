@@ -13,18 +13,12 @@ jobs:
   build:
     name: 'build'
     runs-on: ${{matrix.os}}
+    container: ghcr.io/skaginn3x/skaginn3x/framework/tfc-toolchain:sha-f8ab815
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
         build_type: [debug, release]
-        include:
-        - os: ubuntu-latest
-          vcpkg_target_triplet: "x64-linux-gcc"
-        - os: macos-latest
-          vcpkg_target_triplet: "x64-osx"
-        - os: windows-latest
-          vcpkg_target_triplet: "x64-windows"
+
     steps:
       - uses: actions/checkout@v3
       - name: Restore artifacts, or setup vcpkg
@@ -39,4 +33,4 @@ jobs:
           buildPreset: 'build-ci'
           testPreset: 'test-ci'
           configurePreset: 'conf-ci'
-          configurePresetAdditionalArgs: "['-DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake', '-DVCPKG_TARGET_TRIPLET=${{ matrix.vcpkg_target_triplet }}']"
+          configurePresetAdditionalArgs: "['-DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake', '-DVCPKG_TARGET_TRIPLET=x64-linux-gcc']"
