@@ -119,7 +119,7 @@ auto handle_connection(tcp::socket client, auto&& handler) -> awaitable<void> {
       break;
     }
 
-    if (request_count < header.length - 1) {
+    if (request_count + 1 < static_cast<size_t>(header.length)) {
       std::cerr << "packet size to small for body " << request_count << " " << state->client_.remote_endpoint()
                 << " Disconnecting!" << std::endl;
       co_await async_write(state->client_, asio::buffer(build_error_buffer(header, 0, errc::illegal_data_value), count),
@@ -127,7 +127,6 @@ auto handle_connection(tcp::socket client, auto&& handler) -> awaitable<void> {
       continue;
     }
 
-    auto function_code = static_cast<function_e>(request_buffer[0]);
     // Handle the request
     auto resp = handle_request(header, request_buffer, handler);
     if (resp) {
