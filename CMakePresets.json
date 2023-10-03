@@ -17,10 +17,15 @@
   ],
   "testPresets": [
     {
-      "name": "test-ci",
-      "hidden": false,
+      "name": "test-common",
+      "hidden": true,
       "output": {"outputOnFailure": true},
       "execution": {"noTestsAction": "error", "stopOnFailure": true}
+    },
+    {
+      "name": "test-ci",
+      "configurePreset": "conf-ci",
+      "inherits": ["test-common"]
     }
   ]
 }
