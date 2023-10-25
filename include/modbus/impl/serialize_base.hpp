@@ -28,7 +28,7 @@
 #include <vector>
 
 #include <modbus/error.hpp>
-#include <modbus/functions.hpp>
+#include "../../../src/functions.cxx"
 
 namespace modbus::impl {
 

@@ -1,14 +1,12 @@
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 3.28)
 project(modbus
   VERSION
-    0.0.1
+    0.0.2
   DESCRIPTION
     "Boost asio based modbus library"
   LANGUAGES
     CXX
 )
-
-add_compile_definitions(BOOST_UT_DISABLE_MODULE)
 
 set(CMAKE_CXX_STANDARD 23)
 
@@ -25,8 +23,13 @@ add_feature_info("BUILD_TESTS" BUILD_TESTS "Indicates whether tests should be bu
 option(BUILD_EXAMPLES "Indicates whether examples should be built." ON)
 add_feature_info("BUILD_EXAMPLES" BUILD_EXAMPLES "Indicates whether examples should be built.")
 
-add_library(modbus
-  src/error.cpp)
+add_library(modbus)
+target_sources(modbus
+        PUBLIC FILE_SET CXX_MODULES FILES
+        src/modbus.cxx
+        src/functions.cxx
+        src/client.cxx
+)
 
 target_link_libraries(modbus PUBLIC asio)
 target_include_directories(modbus PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)

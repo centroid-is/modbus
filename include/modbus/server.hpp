@@ -10,12 +10,12 @@
 #include <asio/experimental/awaitable_operators.hpp>
 
 #include <modbus/error.hpp>
-#include <modbus/functions.hpp>
 #include <modbus/impl/deserialize.hpp>
 #include <modbus/impl/serialize.hpp>
 #include <modbus/request.hpp>
 #include <modbus/response.hpp>
 #include <modbus/tcp.hpp>
+#include "../../src/functions.cxx"
 
 namespace modbus {
 

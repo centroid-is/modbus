@@ -29,9 +29,9 @@
 #include <variant>
 #include <vector>
 
-#include <modbus/functions.hpp>
 #include <modbus/impl/deserialize_base.hpp>
 #include <modbus/impl/serialize_base.hpp>
+#include "../../src/functions.cxx"
 
 namespace modbus {
 
