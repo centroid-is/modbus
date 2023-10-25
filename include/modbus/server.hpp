@@ -56,7 +56,7 @@ auto handle_request(tcp_mbap const& header, std::ranges::range auto data, auto&&
 }
 
 struct connection_state {
-  explicit connection_state(tcp::socket client) : client_(std::move(client)) {}
+  explicit connection_state(tcp::socket&& client) : client_(std::move(client)) {}
 
   tcp::socket client_;
 };
