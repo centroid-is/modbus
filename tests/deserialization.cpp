@@ -1,4 +1,5 @@
 #include <array>
+#include <iostream>
 
 #include <boost/ut.hpp>
 #include <modbus/tcp.hpp>
