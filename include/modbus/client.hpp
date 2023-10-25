@@ -32,10 +32,11 @@
 #include <string>
 #include <unordered_map>
 
-#include <boost/asio/io_context.hpp>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/strand.hpp>
-#include <boost/asio/streambuf.hpp>
+#include <asio/as_tuple.hpp>
+#include <asio/io_context.hpp>
+#include <asio/ip/tcp.hpp>
+#include <asio/strand.hpp>
+#include <asio/streambuf.hpp>
 
 #include <modbus/constants.hpp>
 #include <modbus/error.hpp>
@@ -49,7 +50,6 @@
 #include <utility>
 
 namespace modbus {
-namespace asio = boost::asio;
 namespace ip = asio::ip;
 
 using asio::async_compose;
@@ -83,15 +83,15 @@ public:
 
   /// Connect to a server.
   template <typename completion_token>
-  auto connect(const std::string& hostname, const std::string& port, completion_token&& token) 
-      -> asio::async_result<std::decay_t<completion_token>, void(std::error_code)>::return_type {
+  auto connect(const std::string& hostname, const std::string& port, completion_token&& token) ->
+      typename asio::async_result<std::decay_t<completion_token>, void(std::error_code)>::return_type {
     return async_compose<completion_token, void(std::error_code)>(
         [&](auto& self) {
           co_spawn(
               ctx_,
               [&, self = std::move(self)]() mutable -> asio::awaitable<void> {
                 tcp::resolver resolver{ co_await asio::this_coro::executor };
-                tcp::resolver::query query{ hostname, port };
+                const tcp::resolver::query query{ hostname, port };
                 auto [error, endpoint] = co_await resolver.async_resolve(query, asio::as_tuple(asio::use_awaitable));
                 if (error) {
                   self.complete(error);
@@ -99,7 +99,7 @@ public:
                 }
 
                 auto [connect_error, _] =
-                    co_await asio::async_connect(socket, endpoint, asio::as_tuple(asio::use_awaitable));
+                    co_await asio::async_connect(socket_, endpoint, asio::as_tuple(asio::use_awaitable));
                 if (connect_error) {
                   self.complete(connect_error);
                   co_return;
@@ -127,7 +127,7 @@ public:
   void close() {
     if (socket_.is_open()) {
       // Shutdown and close socket.
-      socket_.shutdown(boost::asio::socket_base::shutdown_type::shutdown_both);
+      socket_.shutdown(asio::socket_base::shutdown_type::shutdown_both);
       socket_.close();
     }
     connected_ = false;
@@ -226,9 +226,10 @@ protected:
               ctx_,
               [&, self = std::move(self_outer), request = std::move(send_request)]() mutable -> asio::awaitable<void> {
                 assert(request.length() <= std::numeric_limits<uint16_t>::max() - 1 && "Request length too large for type");
-                tcp_mbap request_header{
-                  .transaction = ++next_id_, .protocol = static_cast<uint16_t>(0), .length = static_cast<uint16_t>(request.length() + 1U), .unit = unit
-                };
+                tcp_mbap request_header{ .transaction = ++next_id_,
+                                         .protocol = static_cast<uint16_t>(0),
+                                         .length = static_cast<uint16_t>(request.length() + 1U),
+                                         .unit = unit };
 
                 auto header_encoded = request_header.to_bytes();
                 auto request_serialized = impl::serialize_request(request);
@@ -255,11 +256,11 @@ protected:
                   co_return;
                 }
 
-                std::array<uint8_t, MODBUS_MAX_PDU> read_buffer{};
+                std::array<uint8_t, modbus_max_pdu> read_buffer{};
                 auto [body_error, size_of_body] =
                     co_await socket_.async_read_some(asio::buffer(read_buffer,
-                                                                 header.length - 1),  // -1 header.unit is inside the count
-                                                    asio::as_tuple(asio::use_awaitable));
+                                                                  header.length - 1),  // -1 header.unit is inside the count
+                                                     asio::as_tuple(asio::use_awaitable));
                 if (body_error) {
                   self.complete(std::unexpected(body_error));
                   co_return;

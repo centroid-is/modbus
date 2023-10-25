@@ -21,4 +21,4 @@ target_link_libraries(server_conformance PRIVATE Boost::ut modbus)
 add_test(NAME server_conformance COMMAND server_conformance)
 
 add_executable(sniff_request_encoding helpers/mbpoll_request_encoding_sniffer.cpp)
-target_link_libraries(sniff_request_encoding PRIVATE Boost::boost modbus)
+target_link_libraries(sniff_request_encoding PRIVATE modbus)

@@ -15,15 +15,15 @@ int main(int argc, const char **argv) {
     }
 
     std::vector<std::thread> pool;
-    boost::asio::io_context ctx;
+    asio::io_context ctx;
 
     std::string_view hostname = argv[1];
     std::string_view port = argv[2];
 
     modbus::client client{ctx};
 
-    co_spawn(ctx, [&]() -> boost::asio::awaitable<void> {
-        auto error = co_await client.connect(std::string(hostname), std::string(port), boost::asio::use_awaitable);
+    co_spawn(ctx, [&]() -> asio::awaitable<void> {
+        auto [error] = co_await client.connect(std::string(hostname), std::string(port), asio::as_tuple(asio::use_awaitable));
         if (error) {
             std::cerr << "Error connecting: " << error.message() << '\n';
             exit(-1);
@@ -33,7 +33,7 @@ int main(int argc, const char **argv) {
         for (size_t i = 0; i < 25; i++ ) {
 
             auto response = co_await client.read_holding_registers(0, 0, 15,
-                                                                   boost::asio::use_awaitable);
+                                                                   asio::use_awaitable);
             if (!response) {
                 std::cerr << "Error reading: " << response.error().message() << '\n';
                 exit(-1);
@@ -44,7 +44,7 @@ int main(int argc, const char **argv) {
             }
             std::cout << "\n";
             auto coils_response = co_await client.read_coils(0, 0, 15,
-                                                             boost::asio::use_awaitable);
+                                                             asio::use_awaitable);
             if (!coils_response) {
                 std::cerr << "Error reading: " << coils_response.error().message() << '\n';
                 exit(-1);
@@ -57,7 +57,7 @@ int main(int argc, const char **argv) {
             std::this_thread::sleep_for(std::chrono::milliseconds {150});
         }
         client.close();
-    }, boost::asio::detached);
+    }, asio::detached);
 
     ctx.run();
 }

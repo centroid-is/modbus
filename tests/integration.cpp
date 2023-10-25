@@ -5,8 +5,6 @@
 
 #include <boost/ut.hpp>
 
-namespace asio = boost::asio;
-
 int main() {
     using boost::ut::operator ""_test;
     using boost::ut::operator|;
@@ -27,7 +25,7 @@ int main() {
 
     "Client integration tests"_test = [&]() {
         co_spawn(ctx, [&]() mutable -> asio::awaitable<void> {
-            auto connect_error = co_await client.connect("localhost", std::to_string(port), asio::use_awaitable);
+            auto [connect_error] = co_await client.connect("localhost", std::to_string(port), asio::as_tuple(asio::use_awaitable));
             expect(!connect_error);
             handler->registers[5] = 55;
             auto res = co_await client.read_holding_registers(0, 5, 1, asio::use_awaitable);

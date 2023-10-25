@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "Modbus protocol implementation, based on boost asio",
   "dependencies": [
-    "boost-asio",
+    "asio",
     "bext-ut"
   ]
 }

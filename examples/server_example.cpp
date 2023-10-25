@@ -11,7 +11,7 @@ int main(int argc, char* argv[]) {
         std::cout << "Using provided port: " << argv[1] << std::endl;
         port = std::atoi(argv[1]);
     }
-    boost::asio::io_context ctx;
+    asio::io_context ctx;
 
     auto handler = std::make_shared<modbus::default_handler>();
     handler->registers[0] = 0;

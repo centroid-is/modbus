@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include <modbus/impl/serialize_tcp.hpp>
-
 #include <modbus/request.hpp>
 #include <modbus/response.hpp>
 

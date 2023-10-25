@@ -2,12 +2,12 @@
 
 #include <array>
 #include <expected>
+#include <iostream>
 #include <ranges>
 #include <string>
-#include <iostream>
 
-#include <boost/asio/as_tuple.hpp>
-#include <boost/asio/experimental/awaitable_operators.hpp>
+#include <asio/as_tuple.hpp>
+#include <asio/experimental/awaitable_operators.hpp>
 
 #include <modbus/error.hpp>
 #include <modbus/functions.hpp>
@@ -19,7 +19,6 @@
 
 namespace modbus {
 
-namespace asio = boost::asio;
 namespace ip = asio::ip;
 using asio::awaitable;
 using asio::detached;
@@ -157,8 +156,6 @@ private:
       auto client = co_await acceptor_.async_accept(use_awaitable);
       client.set_option(asio::ip::tcp::no_delay(true));
       client.set_option(asio::socket_base::keep_alive(true));
-
-      std::cout << "Connection opened from " << client.remote_endpoint() << std::endl;
 
       co_spawn(acceptor_.get_executor(), handle_connection(std::move(client), handler_), detached);
 

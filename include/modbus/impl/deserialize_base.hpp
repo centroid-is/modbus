@@ -36,7 +36,7 @@
 
 // TODO: This include is only here for ntohs
 //  Find a better cross platform way to include this.
-#include <boost/asio.hpp>
+#include <asio.hpp>
 
 #include <modbus/error.hpp>
 #include <modbus/functions.hpp>

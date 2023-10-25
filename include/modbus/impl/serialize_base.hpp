@@ -44,7 +44,7 @@ inline auto bool_to_uint16(bool value) -> std::uint16_t {
 
 /// Serialize an function_t in big endian.
 [[nodiscard]] auto serialize_function(function_e value) -> uint8_t {
-  return static_cast<uint8_t>(value);
+  return std::to_underlying(value);
 }
 
 /// Serialize an uint16_t in big endian.
