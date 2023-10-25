@@ -1,8 +1,9 @@
 // Copyright (c) 2023, Skaginn3x (https://skaginn3x.com)
-
-export module modbus:function;
+module;
 
 #include <cstdint>
+
+export module modbus:function;
 
 namespace modbus {
 export enum struct function_e : std::uint8_t {

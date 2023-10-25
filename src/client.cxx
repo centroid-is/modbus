@@ -1,10 +1,12 @@
 // Copyright (c) 2023, Skaginn3x (https://Skaginn3x.com)
+module;
+
+#include <expected>
+#include <asio.hpp>
 
 export module modbus:client;
 //import :deserialize;
 //import :serialize;
-
-#include <asio.hpp>
 
 namespace modbus {
 namespace ip = asio::ip;
