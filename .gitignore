@@ -1,0 +1,8 @@
+vcpkg-sys*
+build*/
+cmake-build*
+.idea
+vcpkg/
+.vscode
+CMakeUserPresets.json
+*.kdev4

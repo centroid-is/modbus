@@ -1,104 +1,70 @@
-// Copyright (c) 2017, Fizyr (https://fizyr.com)
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//     * Redistributions of source code must retain the above copyright
-//       notice, this list of conditions and the following disclaimer.
-//     * Redistributions in binary form must reproduce the above copyright
-//       notice, this list of conditions and the following disclaimer in the
-//       documentation and/or other materials provided with the distribution.
-//     * Neither the name of the copyright holder(s) nor the
-//       names of its contributors may be used to endorse or promote products
-//       derived from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Copyright (c) 2023, Skaginn3x (https://skaginn3x.com)
 
 #pragma once
 
-#include "deserialize_base.hpp"
-#include "modbus/request.hpp"
+#include <expected>
+#include <ranges>
+#include <span>
+#include <system_error>
 
-namespace modbus {
-namespace impl {
+#include <modbus/impl/deserialize_base.hpp>
+#include <modbus/request.hpp>
 
-    /// Deserialize a read_coils/read discrete inputs/read input registers/read holding registers request.
-    template<typename InputIterator, typename Adu>
-    InputIterator deserialize(InputIterator start, std::size_t length, Adu & adu, std::error_code & error) {
-        if (!check_length(length, 5, error)) return start;
-        start = deserialize_function (start, adu.function, error);
-        start = deserialize_be16(start, adu.address);
-        start = deserialize_be16(start, adu.count);
-        return start;
-    }
+namespace modbus::impl {
+auto request_from_function(function_e func) -> std::expected<request::requests, std::error_code> {
+  switch (func) {
+    case function_e::read_discrete_inputs:
+      return request::read_discrete_inputs{};
+    case function_e::read_coils:
+      return request::read_coils{};
+    case function_e::read_holding_registers:
+      return request::read_holding_registers{};
+    case function_e::read_input_registers:
+      return request::read_input_registers{};
+    case function_e::write_single_coil:
+      return request::write_single_coil{};
+    case function_e::write_single_register:
+      return request::write_single_register{};
+    case function_e::write_multiple_coils:
+      return request::write_multiple_coils{};
+    case function_e::write_multiple_registers:
+      return request::write_multiple_registers{};
+    case function_e::mask_write_register:
+      return request::mask_write_register{};
+    case function_e::read_exception_status:
+    case function_e::diagnostic:
+    case function_e::get_com_event_log:
+    case function_e::get_com_event_counter:
+    case function_e::report_server_id:
+    case function_e::read_file_record:
+    case function_e::write_file_record:
+    case function_e::read_write_multiple_registers:
+    case function_e::read_fifo_record:
+    default:
+      return std::unexpected(modbus_error(errc_t::illegal_function));
+  }
+}
 
-    /// Deserialize a write_single_coil request.
-    template <typename InputIterator>
-    InputIterator deserialize(InputIterator start, std::size_t length, request::write_single_coil &adu,
-                              std::error_code &error) {
-        if (!check_length(length, 5, error))
-            return start;
-        start = deserialize_function(start, request::write_single_coil::function, error);
-        start = deserialize_be16(start, adu.address);
-        start = deserialize_bool(start, adu.value, error);
-        return start;
-    }
+/// Deserialize request. Expect a function code.
+[[nodiscard]] auto deserialize_request(std::ranges::range auto data, function_e const expected_function)
+    -> std::expected<request::requests, std::error_code> {
+  // Deserialize the function
+  auto expect_function = deserialize_function(std::span(data).subspan(0), expected_function);
+  if (!expect_function) {
+    return std::unexpected(expect_function.error());
+  }
+  auto function = expect_function.value();
 
-    /// Deserialize a write_single_register request.
-    template <typename InputIterator>
-    InputIterator deserialize(InputIterator start, std::size_t length, request::write_single_register &adu,
-                              std::error_code &error) {
-        if (!check_length(length, 5, error))
-            return start;
-        start = deserialize_function(start, adu.function, error);
-        start = deserialize_be16(start, adu.address);
-        start = deserialize_be16(start, adu.value);
-        return start;
-    }
+  // Fetch a request instance from the function code.
+  auto expect_request = request_from_function(function);
+  if (!expect_request) {
+    return std::unexpected(expect_request.error());
+  }
+  auto deserialize_error = std::visit([&](auto& request) { return request.deserialize(data); }, expect_request.value());
+  if (deserialize_error) {
+    return std::unexpected(deserialize_error);
+  }
+  return expect_request.value();
+}
 
-    /// Deserialize a write_multiple_coils request.
-    template <typename InputIterator>
-    InputIterator deserialize(InputIterator start, std::size_t length, request::write_multiple_coils &adu,
-                              std::error_code &error) {
-        if (!check_length(length, 3, error))
-            return start;
-        start = deserialize_function(start, adu.function, error);
-        start = deserialize_be16(start, adu.address);
-        start = deserialize_bits_request(start, length - 3, adu.values, error);
-        return start;
-    }
-
-    /// Deserialize a write_multiple_registers request.
-    template <typename InputIterator>
-    InputIterator deserialize(InputIterator start, std::size_t length, request::write_multiple_registers &adu,
-                              std::error_code &error) {
-        if (!check_length(length, 3, error)) return start;
-        start = deserialize_function(start, adu.function, error);
-        start = deserialize_be16(start, adu.address);
-        start = deserialize_words_request(start, length - 3, adu.values, error);
-        return start;
-    }
-
-    /// Deserialize a mask_write_register request.
-    template <typename InputIterator>
-    InputIterator deserialize(InputIterator start, std::size_t length, request::mask_write_register &adu,
-                              std::error_code &error) {
-        if (!check_length(length, 7, error))
-            return start;
-        start = deserialize_function(start, adu.function, error);
-        start = deserialize_be16(start, adu.address);
-        start = deserialize_be16(start, adu.and_mask);
-        start = deserialize_be16(start, adu.or_mask);
-        return start;
-    }
-
-} // namespace impl
-} // namespace modbus
+}  // namespace modbus::impl

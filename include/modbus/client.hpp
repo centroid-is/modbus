@@ -1,4 +1,5 @@
 // Copyright (c) 2017, Fizyr (https://fizyr.com)
+// Copyright (c) 2023, Skaginn3x (https://Skaginn3x.com)
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -26,234 +27,283 @@
 
 #include <atomic>
 #include <cstdint>
+#include <expected>
 #include <functional>
-#include <map>
 #include <string>
+#include <unordered_map>
 
+#include <asio/as_tuple.hpp>
 #include <asio/io_context.hpp>
 #include <asio/ip/tcp.hpp>
 #include <asio/strand.hpp>
 #include <asio/streambuf.hpp>
 
-#include "functions.hpp"
-#include "request.hpp"
-#include "response.hpp"
-#include "tcp.hpp"
+#include <modbus/constants.hpp>
+#include <modbus/error.hpp>
+#include <modbus/functions.hpp>
+#include <modbus/request.hpp>
+#include <modbus/response.hpp>
+#include <modbus/tcp.hpp>
+
+#include <modbus/impl/deserialize.hpp>
+#include <modbus/impl/serialize.hpp>
+#include <utility>
 
 namespace modbus {
+namespace ip = asio::ip;
+
+using asio::async_compose;
+using tcp = ip::tcp;
 
 /// A connection to a Modbus server.
 class client {
-  public:
-    template <typename T>
-    using Callback = std::function<void(tcp_mbap const &header, T const &response, std::error_code const &)>;
-    typedef asio::ip::tcp tcp;
+protected:
+  /// Execution context
+  asio::io_context& ctx_;
 
-    /// Callback to invoke for IO errors that cants be linked to a specific transaction.
-    /**
-	 * Additionally the connection will be closed and every transaction callback will be called with an EOF error.
-	 */
-    std::function<void(std::error_code const &)> on_io_error;
+  /// The socket to use.
+  tcp::socket socket_;
 
-  protected:
-    /// Low level message handler.
-    using Handler = std::function<std::uint8_t const *(std::uint8_t const *start, std::size_t size,
-                                                       tcp_mbap const &header, std::error_code error)>;
+  /// Next transaction ID.
+  std::uint16_t next_id_ = 0;
 
-    /// Struct to hold transaction details.
-    struct transaction_t {
-        std::uint8_t function;
-        Handler handler;
-    };
+  /// Track connected state of client.
+  bool connected_{ false };
 
-    /// Strand to use to prevent concurrent handler execution.
-    asio::io_context::strand strand;
+  /// Socket options
+  asio::ip::tcp::no_delay no_delay_option{ true };
+  asio::socket_base::keep_alive keep_alive_option{ true };
 
-    /// The socket to use.
-    tcp::socket socket;
+public:
+  /// Construct a client.
+  explicit client(asio::io_context& io_context) : ctx_{ io_context }, socket_{ io_context } {}
 
-    /// The resolver to use.
-    tcp::resolver resolver;
+  /// Get the IO executor used by the client.
+  auto io_executor() -> tcp::socket::executor_type { return socket_.get_executor(); };
 
-    /// Buffer for read operations.
-    asio::streambuf read_buffer;
+  /// Connect to a server.
+  template <typename completion_token>
+  auto connect(const std::string& hostname, const std::string& port, completion_token&& token) ->
+      typename asio::async_result<std::decay_t<completion_token>, void(std::error_code)>::return_type {
+    return async_compose<completion_token, void(std::error_code)>(
+        [&](auto& self) {
+          co_spawn(
+              ctx_,
+              [&, self = std::move(self)]() mutable -> asio::awaitable<void> {
+                tcp::resolver resolver{ co_await asio::this_coro::executor };
+                const tcp::resolver::query query{ hostname, port };
+                auto [error, endpoint] = co_await resolver.async_resolve(query, asio::as_tuple(asio::use_awaitable));
+                if (error) {
+                  self.complete(error);
+                  co_return;
+                }
 
-    /// Transaction table to keep track of open transactions.
-    std::map<int, transaction_t> transactions;
+                auto [connect_error, _] =
+                    co_await asio::async_connect(socket_, endpoint, asio::as_tuple(asio::use_awaitable));
+                if (connect_error) {
+                  self.complete(connect_error);
+                  co_return;
+                }
 
-    /// Next transaction ID.
-    std::uint16_t next_id = 0;
+                connected_ = true;
 
-    /// Track connected state of client.
-    bool _connected;
+                // Set socket options as recommended by the modbus spec.
+                socket_.set_option(no_delay_option);
+                socket_.set_option(keep_alive_option);
 
-    /// Socket options
-    asio::ip::tcp::no_delay no_delay_option;
-    asio::socket_base::keep_alive keep_alive_option;
+                self.complete({});
 
-  public:
-    /// Construct a client.
-    client(asio::io_context &io_context /*< The IO context to use.*/);
+                co_return;
+              },
+              asio::detached);
+        },
+        token, ctx_);
+  }
 
-    /// Get the IO executor used by the client.
-    tcp::socket::executor_type io_executor() { return socket.get_executor(); };
-
-    /// Connect to a server.
-    void connect(std::string const &hostname, ///< The IP address or host name of the server.
-                 std::string const &port,     ///< The port to connect to.
-                 std::function<void(std::error_code const &)>
-                     callback ///< The callback to invoke when the connection is established, or when an error occurs.
-    );
-
-    /// Connect to a server at the default Modbus port 502.
-    void connect(std::string const &hostname, ///< The IP address or host name of the server.
-                 std::function<void(std::error_code const &)>
-                     callback ///< The callback to invoke when the connection is established, or when an error occurs.
-    ) {
-        connect(hostname, "502", callback);
+  /// Disconnect from the server.
+  /**
+   * Any remaining transaction callbacks will be invoked with an EOF error.
+   */
+  void close() {
+    if (socket_.is_open()) {
+      // Shutdown and close socket.
+      socket_.shutdown(asio::socket_base::shutdown_type::shutdown_both);
+      socket_.close();
     }
+    connected_ = false;
+  }
 
-    /// Disconnect from the server.
-    /**
-	 * Any remaining transaction callbacks will be invoked with an EOF error.
-	 */
-    void close();
+  /// Check if the connection to the server is open.
+  /**
+   * \return True if the connection to the server is open.
+   */
+  auto is_open() -> bool { return socket_.is_open(); }
 
-    /// Reset the client.
-    /**
-	 * Should be called before re-opening a connection after a previous connection was closed.
-	 */
-    void reset();
+  /// Check if the client is connected.
+  auto is_connected() -> bool { return is_open() && connected_; }
 
-    /// Check if the connection to the server is open.
-    /**
-	 * \return True if the connection to the server is open.
-	 */
-    bool is_open() { return socket.is_open(); }
+  /// Read a number of coils from the connected server.
+  template <typename completion_token>
+  auto read_coils(std::uint8_t unit, std::uint16_t address, std::uint16_t count, completion_token&& token) {
+    return send_message<completion_token>(unit, request::read_coils{ address, count }, std::forward<decltype(token)>(token));
+  }
 
-    /// Check if the client is connected.
-    bool is_connected() { return is_open() && _connected; }
+  /// Read a number of discrete inputs from the connected server.
+  template <typename completion_token>
+  auto read_discrete_inputs(std::uint8_t unit, std::uint16_t address, std::uint16_t count, completion_token&& token) {
+    return send_message<completion_token>(unit, request::read_discrete_inputs{ address, count },
+                                          std::forward<decltype(token)>(token));
+  }
 
-    /// Read a number of coils from the connected server.
-    void read_coils(
-        std::uint8_t unit,                             ///< The Modbus TCP unit to send the command to.
-        std::uint16_t address,                         ///< The address of the first coil to read.
-        std::uint16_t count,                           ///< The number of coils to read.
-        Callback<response::read_coils> const &callback ///< The callback to invoke when the reply or error arrives.
-    );
+  /// Read a number of holding registers from the connected server.
+  template <typename completion_token>
+  auto read_holding_registers(std::uint8_t unit, std::uint16_t address, std::uint16_t count, completion_token&& token) {
+    return send_message<completion_token>(unit, request::read_holding_registers{ address, count },
+                                          std::forward<decltype(token)>(token));
+  }
 
-    /// Read a number of discrete inputs from the connected server.
-    void read_discrete_inputs(std::uint8_t unit,     ///< The Modbus TCP unit to send the command to.
-                              std::uint16_t address, ///< The address of the first coil to read.
-                              std::uint16_t count,   ///< The number of inputs to read.
-                              Callback<response::read_discrete_inputs> const
-                                  &callback ///< The callback to invoke when the reply or error arrives.
-    );
+  /// Read a number of input registers from the connected server.
+  template <typename completion_token>
+  auto read_input_registers(std::uint8_t unit, std::uint16_t address, std::uint16_t count, completion_token&& token) {
+    return send_message<completion_token>(unit, request::read_input_registers{ address, count },
+                                          std::forward<decltype(token)>(token));
+  }
 
-    /// Read a number of holding registers from the connected server.
-    void read_holding_registers(std::uint8_t unit,     ///< The Modbus TCP unit to send the command to.
-                                std::uint16_t address, ///< The address of the first coil to read.
-                                std::uint16_t count,   ///< The number of registers to read.
-                                Callback<response::read_holding_registers> const
-                                    &callback ///< The callback to invoke when the reply or error arrives.
-    );
+  /// Write to a single coil on the connected server.
+  template <typename completion_token>
+  auto write_single_coil(std::uint8_t unit, std::uint16_t address, bool value, completion_token&& token) {
+    return send_message<completion_token>(unit, request::write_single_coil{ address, value },
+                                          std::forward<decltype(token)>(token));
+  }
 
-    /// Read a number of input registers from the connected server.
-    void read_input_registers(std::uint8_t unit,     ///< The Modbus TCP unit to send the command to.
-                              std::uint16_t address, ///< The address of the first coil to read.
-                              std::uint16_t count,   ///< The number of registers to read.
-                              Callback<response::read_input_registers> const
-                                  &callback ///< The callback to invoke when the reply or error arrives.
-    );
+  /// Write to a single register on the connected server.
+  template <typename completion_token>
+  auto write_single_register(std::uint8_t unit, std::uint16_t address, std::uint16_t value, completion_token&& token) {
+    return send_message<completion_token>(unit, request::write_single_register{ address, value },
+                                          std::forward<decltype(token)>(token));
+  }
 
-    /// Write to a single coil on the connected server.
-    void write_single_coil(std::uint8_t unit,     ///< The Modbus TCP unit to send the command to.
-                           std::uint16_t address, ///< The address of the coil.
-                           bool value,            ///< The value to write.
-                           Callback<response::write_single_coil> const
-                               &callback ///< The callback to invoke when the reply or error arrives.
-    );
+  /// Write to a number of coils on the connected server.
+  template <typename completion_token>
+  auto write_multiple_coils(std::uint8_t unit, std::uint16_t address, std::vector<bool> values, completion_token&& token) {
+    return send_message<completion_token>(unit, request::write_multiple_coils{ address, std::move(values) },
+                                          std::forward<decltype(token)>(token));
+  }
 
-    /// Write to a single register on the connected server.
-    void write_single_register(std::uint8_t unit,     ///< The Modbus TCP unit to send the command to.
-                               std::uint16_t address, ///< The address of the register.
-                               std::uint16_t value,   ///< The value to write.
-                               Callback<response::write_single_register> const
-                                   &callback ///< The callback to invoke when the reply or error arrives.
-    );
+  /// Write to a number of registers on the connected server.
+  template <typename completion_token>
+  auto write_multiple_registers(std::uint8_t unit,
+                                std::uint16_t address,
+                                std::vector<std::uint16_t> values,
+                                completion_token&& token) {
+    return send_message<completion_token>(unit, request::write_multiple_registers{ address, std::move(values) },
+                                          std::forward<decltype(token)>(token));
+  }
 
-    /// Write to a number of coils on the connected server.
-    void write_multiple_coils(std::uint8_t unit,        ///< The Modbus TCP unit to send the command to.
-                              std::uint16_t address,    ///< The address of the first coil to write.
-                              std::vector<bool> values, ///< The values to write.
-                              Callback<response::write_multiple_coils> const
-                                  &callback ///< The callback to invoke when the reply or error arrives.
-    );
+  /// Perform a masked write to a register on the connected server.
+  /**
+   * Compliant servers will set the value of the register to:
+   * ((old_value AND and_mask) OR (or_mask AND NOT and_MASK))
+   */
+  template <typename completion_token>
+  auto mask_write_register(std::uint8_t unit,
+                           std::uint16_t address,
+                           std::uint16_t and_mask,
+                           std::uint16_t or_mask,
+                           completion_token&& token) {
+    return send_message<completion_token>(unit, request::mask_write_register{ address, and_mask, or_mask },
+                                          std::forward<decltype(token)>(token));
+  }
 
-    /// Write to a number of registers on the connected server.
-    void write_multiple_registers(std::uint8_t unit,                 ///< The Modbus TCP unit to send the command to.
-                                  std::uint16_t address,             ///< The address of the first register to write.
-                                  std::vector<std::uint16_t> values, ///< The values to write.
-                                  Callback<response::write_multiple_registers> const
-                                      &callback ///< The callback to invoke when the reply or error arrives.
-    );
+protected:
+  /// Send a Modbus request to the server.
+  template <typename completion_token>
+  auto send_message(std::uint8_t unit, auto const send_request, completion_token&& token) {
+    using response_type = typename decltype(send_request)::response;
+    return async_compose<completion_token, void(std::expected<response_type, std::error_code>)>(
+        [&, send_request](auto& self_outer) {
+          co_spawn(
+              ctx_,
+              [&, self = std::move(self_outer), request = std::move(send_request)]() mutable -> asio::awaitable<void> {
+                assert(request.length() <= std::numeric_limits<uint16_t>::max() - 1 && "Request length too large for type");
+                tcp_mbap request_header{ .transaction = ++next_id_,
+                                         .protocol = static_cast<uint16_t>(0),
+                                         .length = static_cast<uint16_t>(request.length() + 1U),
+                                         .unit = unit };
 
-    /// Perform a masked write to a register on the connected server.
-    /**
-	 * Compliant servers will set the value of the register to:
-	 * ((old_value AND and_mask) OR (or_mask AND NOT and_MASK))
-	 */
-    void mask_write_register(std::uint8_t unit,      ///< The Modbus TCP unit to send the command to.
-                             std::uint16_t address,  ///< The address of the first register to write.
-                             std::uint16_t and_mask, ///< The AND mask to apply.
-                             std::uint16_t or_mask,  ///< The OR mask to apply.
-                             Callback<response::mask_write_register> const
-                                 &callback ///< The callback to invoke when the reply or error arrives.
-    );
+                auto header_encoded = request_header.to_bytes();
+                auto request_serialized = impl::serialize_request(request);
 
-  protected:
-    /// Set socket options
-    void set_sock_options();
+                std::vector<asio::const_buffer> buffers{ { asio::buffer(header_encoded),
+                                                           asio::buffer(request_serialized) } };
 
-    /// Called when the resolver finished resolving a hostname.
-    void on_resolve(std::error_code const &error,     ///<[in] The error that occured, if any.
-                    tcp::resolver::iterator iterator, ///<[in] The iterator to the first endpoint found by the resolver.
-                    std::function<void(std::error_code const &)>
-                        callback ///<[in] User callback to invoke whent the connection succeeded.
-    );
+                co_await asio::async_write(socket_, buffers, asio::use_awaitable);
 
-    /// Called when the socket finished connecting.
-    void on_connect(std::error_code const &error,     ///<[in] The error that occured, if any.
-                    tcp::resolver::iterator iterator, ///<[in] The iterator to the first endpoint found by the resolver.
-                    std::function<void(std::error_code const &)>
-                        callback ///<[in] User callback to invoke whent the connection succeeded.
-    );
+                /// Buffer for read operations.
+                std::array<uint8_t, tcp_mbap::size> header_buffer{};
+                // Read the response
+                auto [header_error, bytes_transferred] = co_await socket_.async_read_some(
+                    asio::buffer(header_buffer, tcp_mbap::size), asio::as_tuple(asio::use_awaitable));
+                if (header_error) {
+                  self.complete(std::unexpected(header_error));
+                  co_return;
+                }
+                auto header = tcp_mbap::from_bytes(header_buffer);
 
-    /// Called when the socket finished a read operation.
-    void on_read(std::error_code const &error, ///<[in] The error that occured, if any.
-                 std::size_t bytes_transferred ///<[in] The amount of bytes read from the socket.
-    );
+                // Make sure the message contains at least a function code. and a unit
+                if (header.length < 2) {
+                  self.complete(std::unexpected(modbus_error(errc::message_size_mismatch)));
+                  co_return;
+                }
 
-    /// Called when the socket finished a write operation.
-    void on_write(std::shared_ptr<asio::streambuf> keep_memory_active, std::error_code const &error, ///<[in] The error that occured, if any.
-                  std::size_t bytes_transferred ///<[in] The amount of bytes read from the socket.
-    );
+                std::array<uint8_t, modbus_max_pdu> read_buffer{};
+                auto [body_error, size_of_body] =
+                    co_await socket_.async_read_some(asio::buffer(read_buffer,
+                                                                  header.length - 1),  // -1 header.unit is inside the count
+                                                     asio::as_tuple(asio::use_awaitable));
+                if (body_error) {
+                  self.complete(std::unexpected(body_error));
+                  co_return;
+                }
+                if (size_of_body + 1 != static_cast<size_t>(header.length)) {
+                  self.complete(std::unexpected(modbus_error(errc::message_size_mismatch)));
+                  co_return;
+                }
+                // Parse and process all complete messages in the buffer.
+                auto function = response_type::function;
+                auto response = impl::deserialize_response(read_buffer, function);
 
-    /// Allocate a transaction in the transaction table.
-    std::uint16_t allocate_transaction(std::uint8_t function, Handler handler);
+                // Handle deserialization errors in TCP MBAP.
+                // Cant send an error to a specific transaction and can't continue to read from the connection.
+                if (!response) {
+                  self.complete(std::unexpected(response.error()));
+                  co_return;
+                }
+                if (std::visit(
+                        [&](auto res) {
+                          // Function codes 128 and above are exception responses.
+                          if (static_cast<uint8_t>(res.function) >= 128) {
+                            self.complete(std::unexpected{
+                                modbus_error(header.length >= 3 ? errc_t(res.function) : errc::message_size_mismatch) });
+                            return true;
+                          }
+                          return false;
+                        },
+                        response.value())) {
+                  co_return;
+                }
 
-    /// Parse and process a message from the read buffer.
-    /**
-	 * \return True if a message was parsed succesfully, false if there was not enough data.
-	 */
-    bool process_message();
-
-    /// Send a Modbus request to the server.
-    template <typename T>
-    void send_message(std::uint8_t unit,                      ///< The unit identifier of the target device.
-                      T const &request,                       ///< The application data unit of the request.
-                      Callback<typename T::response> callback ///< The callback to invoke when the reply arrives.
-    );
+                auto* value = std::get_if<response_type>(&response.value());
+                if (value) {
+                  self.complete(std::move(*value));
+                } else {
+                  self.complete(std::unexpected(modbus_error(errc::unexpected_function_code)));
+                }
+              },
+              asio::detached);
+        },
+        token, ctx_);
+  }
 };
 
-} // namespace modbus
+}  // namespace modbus

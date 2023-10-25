@@ -1,4 +1,5 @@
 // Copyright (c) 2017, Fizyr (https://fizyr.com)
+// Copyright (c) 2023, Skaginn3x (https://skaginn3x.com)
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -23,179 +24,346 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
+
 #include <cstdint>
+#include <variant>
 #include <vector>
 
-#include "functions.hpp"
+#include <modbus/functions.hpp>
+#include <modbus/impl/serialize_base.hpp>
 
 namespace modbus {
-
 namespace request {
-    struct read_coils;
-    struct read_discrete_inputs;
-    struct read_holding_registers;
-    struct read_input_registers;
-    struct write_single_coil;
-    struct write_single_register;
-    struct write_multiple_coils;
-    struct write_multiple_registers;
-    struct mask_write_register;
-} // namespace request
+struct read_coils;
+struct read_discrete_inputs;
+struct read_holding_registers;
+struct read_input_registers;
+struct write_single_coil;
+struct write_single_register;
+struct write_multiple_coils;
+struct write_multiple_registers;
+struct mask_write_register;
+}  // namespace request
 
 namespace response {
 
-    /// Message representing a read_coils response.
-    struct read_coils {
-        /// Request type.
-        using request = request::read_coils;
+/// Message representing a read_coils response.
+struct read_coils {
+  /// Request type.
+  using request = request::read_coils;
 
-        /// The function code.
-        static constexpr std::uint8_t function = functions::read_coils;
+  /// The function code.
+  static constexpr function_e function = function_e::read_coils;
 
-        /// The read values.
-        std::vector<bool> values;
+  /// The read values.
+  std::vector<bool> values;
 
-        /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 2 + (values.size() + 7) / 8; }
-    };
+  /// The length of the serialized ADU in bytes.
+  [[nodiscard]] auto length() const -> std::size_t { return 2 + (values.size() + 7) / 8; }
 
-    /// Message representing a read_discrete_inputs response.
-    struct read_discrete_inputs {
-        /// Request type.
-        using request = request::read_discrete_inputs;
+  [[nodiscard]] auto deserialize(std::ranges::range auto data) -> std::error_code {
+    auto ex_values = impl::deserialize_bits_response(std::span(data).subspan(1));
+    if (!ex_values) {
+      return ex_values.error();
+    }
+    values = ex_values.value();
+    return {};
+  }
 
-        /// The function code.
-        static constexpr std::uint8_t function = functions::read_discrete_inputs;
+  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
+    std::vector<uint8_t> ret_value;
+    ret_value.emplace_back(impl::serialize_function(function));
+    auto bit_response = impl::serialize_bits_response(values);
+    ret_value.insert(ret_value.end(), bit_response.begin(), bit_response.end());
+    return ret_value;
+  }
+};
 
-        /// The read values.
-        std::vector<bool> values;
+/// Message representing a read_discrete_inputs response.
+struct read_discrete_inputs {
+  /// Request type.
+  using request = request::read_discrete_inputs;
 
-        /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 2 + (values.size() + 7) / 8; }
-    };
+  /// The function code.
+  static constexpr function_e function = function_e::read_discrete_inputs;
 
-    /// Message representing a read_holding_registers response.
-    struct read_holding_registers {
-        /// Request type.
-        using request = request::read_holding_registers;
+  /// The read values.
+  std::vector<bool> values;
 
-        /// The function code.
-        static constexpr std::uint8_t function = functions::read_holding_registers;
+  /// The length of the serialized ADU in bytes.
+  [[nodiscard]] auto length() const -> std::size_t { return 2 + (values.size() + 7) / 8; }
 
-        /// The read values.
-        std::vector<std::uint16_t> values;
+  [[nodiscard]] auto deserialize(std::ranges::range auto data) -> std::error_code {
+    auto ex_values = impl::deserialize_bits_response(std::span(data).subspan(1));
+    if (!ex_values) {
+      return ex_values.error();
+    }
+    values = ex_values.value();
+    return {};
+  }
 
-        /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 2 + values.size() * 2; }
-    };
+  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
+    std::vector<uint8_t> ret_value;
+    ret_value.emplace_back(impl::serialize_function(function));
+    auto bit_response = impl::serialize_bits_response(values);
+    ret_value.insert(ret_value.end(), bit_response.begin(), bit_response.end());
+    return ret_value;
+  }
+};
 
-    /// Message representing a read_input_registers response.
-    struct read_input_registers {
-        /// Request type.
-        using request = request::read_input_registers;
+/// Message representing a read_holding_registers response.
+struct read_holding_registers {
+  /// Request type.
+  using request = request::read_holding_registers;
 
-        /// The function code.
-        static constexpr std::uint8_t function = functions::read_input_registers;
+  /// The function code.
+  static constexpr function_e function = function_e::read_holding_registers;
 
-        /// The read values.
-        std::vector<std::uint16_t> values;
+  /// The read values.
+  std::vector<std::uint16_t> values;
 
-        /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 2 + values.size() * 2; }
-    };
+  /// The length of the serialized ADU in bytes.
+  [[nodiscard]] auto length() const -> std::size_t { return 2 + values.size() * 2; }
 
-    /// Message representing a write_single_coil response.
-    struct write_single_coil {
-        /// Request type.
-        using request = request::write_single_coil;
+  [[nodiscard]] auto deserialize(std::ranges::range auto data) -> std::error_code {
+    auto ex_values = impl::deserialize_words_response(std::span(data).subspan(1));
+    if (!ex_values) {
+      return ex_values.error();
+    }
+    values = ex_values.value();
+    return {};
+  }
 
-        /// The function code.
-        static constexpr std::uint8_t function = functions::write_single_coil;
+  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
+    std::vector<uint8_t> ret_value;
+    ret_value.emplace_back(impl::serialize_function(function));
+    auto word_response = impl::serialize_words_response(values);
+    ret_value.insert(ret_value.end(), word_response.begin(), word_response.end());
+    return ret_value;
+  }
+};
 
-        /// The address of the coil written to.
-        std::uint16_t address;
+/// Message representing a read_input_registers response.
+struct read_input_registers {
+  /// Request type.
+  using request = request::read_input_registers;
 
-        /// The value written to the coil.
-        bool value;
+  /// The function code.
+  static constexpr function_e function = function_e::read_input_registers;
 
-        /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 5; }
-    };
+  /// The read values.
+  std::vector<std::uint16_t> values;
 
-    /// Message representing a write_single_register response.
-    struct write_single_register {
-        /// Request type.
-        using request = request::write_single_register;
+  /// The length of the serialized ADU in bytes.
+  [[nodiscard]] auto length() const -> std::size_t { return 2 + values.size() * 2; }
 
-        /// The function code.
-        static constexpr std::uint8_t function = functions::write_single_register;
+  [[nodiscard]] auto deserialize(std::ranges::range auto data) -> std::error_code {
+    auto ex_values = impl::deserialize_words_response(std::span(data).subspan(1));
+    if (!ex_values) {
+      return ex_values.error();
+    }
+    values = ex_values.value();
+    return {};
+  }
 
-        /// The address of the register written to.
-        std::uint16_t address;
+  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
+    std::vector<uint8_t> ret_value;
+    ret_value.emplace_back(impl::serialize_function(function));
+    auto word_response = impl::serialize_words_response(values);
+    ret_value.insert(ret_value.end(), word_response.begin(), word_response.end());
+    return ret_value;
+  }
+};
 
-        /// The value written to the register.
-        std::uint16_t value;
+/// Message representing a write_single_coil response.
+struct write_single_coil {
+  /// Request type.
+  using request = request::write_single_coil;
 
-        /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 5; }
-    };
+  /// The function code.
+  static constexpr function_e function = function_e::write_single_coil;
 
-    /// Message representing a write_multiple_coil response.
-    struct write_multiple_coils {
-        /// Request type.
-        using request = request::write_multiple_coils;
+  /// The address of the coil written to.
+  std::uint16_t address;
 
-        /// The function code.
-        static constexpr std::uint8_t function = functions::write_multiple_coils;
+  /// The value written to the coil.
+  bool value;
 
-        /// The address of the first coil written to.
-        std::uint16_t address;
+  /// The length of the serialized ADU in bytes.
+  [[nodiscard]] static auto length() -> std::size_t { return 5; }
 
-        /// The number of coils written to.
-        std::uint16_t count;
+  [[nodiscard]] auto deserialize(std::ranges::range auto data) -> std::error_code {
+    address = impl::deserialize_be16(std::span(data).subspan(1));
 
-        /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 5; }
-    };
+    auto ex_value = impl::deserialize_bool(std::span(data).subspan(3));
+    if (!ex_value) {
+      return ex_value.error();
+    }
+    value = ex_value.value();
+    return {};
+  }
 
-    /// Message representing a write_multiple_registers response.
-    struct write_multiple_registers {
-        /// Request type.
-        using request = request::write_multiple_registers;
+  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
+    std::vector<uint8_t> ret_value;
+    ret_value.emplace_back(impl::serialize_function(function));
+    auto arr_address = impl::serialize_16_array(impl::serialize_be16(address));
+    ret_value.insert(ret_value.end(), arr_address.begin(), arr_address.end());
+    auto arr_value = impl::serialize_16_array(impl::serialize_be16(impl::bool_to_uint16(value)));
+    ret_value.insert(ret_value.end(), arr_value.begin(), arr_value.end());
+    return ret_value;
+  }
+};
 
-        /// The function code.
-        static constexpr std::uint8_t function = functions::write_multiple_registers;
+/// Message representing a write_single_register response.
+struct write_single_register {
+  /// Request type.
+  using request = request::write_single_register;
 
-        /// The address of the first register written to.
-        std::uint16_t address;
+  /// The function code.
+  static constexpr function_e function = function_e::write_single_register;
 
-        /// The number of registers written to.
-        std::uint16_t count;
+  /// The address of the register written to.
+  std::uint16_t address;
 
-        /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 5; }
-    };
+  /// The value written to the register.
+  std::uint16_t value;
 
-    /// Message representing a mask_write_register response.
-    struct mask_write_register {
-        /// Request type.
-        using request = request::mask_write_register;
+  /// The length of the serialized ADU in bytes.
+  [[nodiscard]] static auto length() -> std::size_t { return 5; }
 
-        /// The function code.
-        static constexpr std::uint8_t function = functions::mask_write_register;
+  [[nodiscard]] auto deserialize(std::ranges::range auto data) -> std::error_code {
+    address = impl::deserialize_be16(std::span(data).subspan(1));
+    value = impl::deserialize_be16(std::span(data).subspan(3));
+    return {};
+  }
 
-        /// The address of the register written to.
-        std::uint16_t address;
+  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
+    std::vector<uint8_t> ret_value;
+    ret_value.emplace_back(impl::serialize_function(function));
+    auto arr_address = impl::serialize_16_array(impl::serialize_be16(address));
+    ret_value.insert(ret_value.end(), arr_address.begin(), arr_address.end());
+    auto arr_value = impl::serialize_16_array(impl::serialize_be16(value));
+    ret_value.insert(ret_value.end(), arr_value.begin(), arr_value.end());
+    return ret_value;
+  }
+};
 
-        /// The AND mask used.
-        std::uint16_t and_mask;
+/// Message representing a write_multiple_coil response.
+struct write_multiple_coils {
+  /// Request type.
+  using request = request::write_multiple_coils;
 
-        /// The OR mask used.
-        std::uint16_t or_mask;
+  /// The function code.
+  static constexpr function_e function = function_e::write_multiple_coils;
 
-        /// The length of the serialized ADU in bytes.
-        std::size_t length() const { return 7; }
-    };
+  /// The address of the first coil written to.
+  std::uint16_t address;
 
-} // namespace response
-} // namespace modbus
+  /// The number of coils written to.
+  std::uint16_t count;
+
+  /// The length of the serialized ADU in bytes.
+  [[nodiscard]] static auto length() -> std::size_t { return 5; }
+
+  [[nodiscard]] auto deserialize(std::ranges::range auto data) -> std::error_code {
+    address = impl::deserialize_be16(std::span(data).subspan(1));
+    count = impl::deserialize_be16(std::span(data).subspan(3));
+    return {};
+  }
+
+  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
+    std::vector<uint8_t> ret_value;
+    ret_value.emplace_back(impl::serialize_function(function));
+    auto arr_address = impl::serialize_16_array(impl::serialize_be16(address));
+    ret_value.insert(ret_value.end(), arr_address.begin(), arr_address.end());
+    auto arr_count = impl::serialize_16_array(impl::serialize_be16(count));
+    ret_value.insert(ret_value.end(), arr_count.begin(), arr_count.end());
+    return ret_value;
+  }
+};
+
+/// Message representing a write_multiple_registers response.
+struct write_multiple_registers {
+  /// Request type.
+  using request = request::write_multiple_registers;
+
+  /// The function code.
+  static constexpr function_e function = function_e::write_multiple_registers;
+
+  /// The address of the first register written to.
+  std::uint16_t address;
+
+  /// The number of registers written to.
+  std::uint16_t count;
+
+  /// The length of the serialized ADU in bytes.
+  [[nodiscard]] static auto length() -> std::size_t { return 5; }
+
+  [[nodiscard]] auto deserialize(std::ranges::range auto data) -> std::error_code {
+    address = impl::deserialize_be16(std::span(data).subspan(1));
+    count = impl::deserialize_be16(std::span(data).subspan(3));
+    return {};
+  }
+
+  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
+    std::vector<uint8_t> ret_value;
+    ret_value.emplace_back(impl::serialize_function(function));
+    auto arr_address = impl::serialize_16_array(impl::serialize_be16(address));
+    ret_value.insert(ret_value.end(), arr_address.begin(), arr_address.end());
+    auto arr_count = impl::serialize_16_array(impl::serialize_be16(count));
+    ret_value.insert(ret_value.end(), arr_count.begin(), arr_count.end());
+    return ret_value;
+  }
+};
+
+/// Message representing a mask_write_register response.
+struct mask_write_register {
+  /// Request type.
+  using request = request::mask_write_register;
+
+  /// The function code.
+  static constexpr function_e function = function_e::mask_write_register;
+
+  /// The address of the register written to.
+  std::uint16_t address;
+
+  /// The AND mask used.
+  std::uint16_t and_mask;
+
+  /// The OR mask used.
+  std::uint16_t or_mask;
+
+  /// The length of the serialized ADU in bytes.
+  [[nodiscard]] static auto length() -> std::size_t { return 7; }
+
+  [[nodiscard]] auto deserialize(std::ranges::range auto data) -> std::error_code {
+    address = impl::deserialize_be16(std::span(data).subspan(1));
+    and_mask = impl::deserialize_be16(std::span(data).subspan(3));
+    or_mask = impl::deserialize_be16(std::span(data).subspan(5));
+    return {};
+  }
+
+  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
+    std::vector<uint8_t> ret_value;
+    ret_value.emplace_back(impl::serialize_function(function));
+    auto arr_address = impl::serialize_16_array(impl::serialize_be16(address));
+    ret_value.insert(ret_value.end(), arr_address.begin(), arr_address.end());
+    auto arr_and_mask = impl::serialize_16_array(impl::serialize_be16(and_mask));
+    ret_value.insert(ret_value.end(), arr_and_mask.begin(), arr_and_mask.end());
+    auto arr_or_mask = impl::serialize_16_array(impl::serialize_be16(or_mask));
+    ret_value.insert(ret_value.end(), arr_or_mask.begin(), arr_or_mask.end());
+    return ret_value;
+  }
+};
+
+using responses = std::variant<mask_write_register,
+                               read_holding_registers,
+                               read_coils,
+                               read_discrete_inputs,
+                               read_input_registers,
+                               write_multiple_coils,
+                               write_multiple_registers,
+                               write_single_coil,
+                               write_single_register>;
+}  // namespace response
+}  // namespace modbus
