@@ -3,8 +3,8 @@
 // Used to generate test data from known working modbus clients
 // fe mbpoll
 
-#include <iostream>
 #include <asio.hpp>
+#include <iostream>
 
 namespace ip = asio::ip;
 using tcp = ip::tcp;
