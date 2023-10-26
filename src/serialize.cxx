@@ -1,9 +1,11 @@
 // Copyright (c) 2023, Skaginn3x (https://skaginn3x.com)
 module;
+// clang-format off
 #include <utility>
 #include <cstdint>
 #include <exception>
 #include <asio.hpp> // This include is only here for cross platform htons and ntohs
+// clang-format on
 export module modbus:serialize;
 import :function;
 

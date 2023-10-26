@@ -3,8 +3,10 @@
 #include <iostream>
 #include <thread>
 #include <vector>
+// clang-format off
 #include <exception> // Missing include inside asio
 #include <asio.hpp>
+// clang-format on
 
 import modbus;
 

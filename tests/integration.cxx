@@ -1,8 +1,9 @@
-
+// clang-format off
 #include <exception>
 #include <asio.hpp>
 #include <array>
 #include <boost/ut.hpp>
+// clang-format on
 
 import modbus;
 

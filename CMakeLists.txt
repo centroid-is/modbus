@@ -51,7 +51,7 @@ if(BUILD_TESTS)
 endif()
 
 # Clang format all files
-file(GLOB_RECURSE ALL_SOURCE_FILES src/*.cpp include/**/*.hpp examples/*.cpp tests/*.cpp)
+file(GLOB_RECURSE ALL_SOURCE_FILES src/*.cpp include/**/*.hpp examples/*.cpp tests/*.cpp src/*.cxx)
 add_custom_target(
         clangformat-fix
         COMMAND clang-format

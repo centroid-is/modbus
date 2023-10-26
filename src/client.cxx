@@ -1,9 +1,11 @@
 // Copyright (c) 2023, Skaginn3x (https://Skaginn3x.com)
 module;
 
+// clang-format off
 #include <expected>
 #include <exception>
 #include <asio.hpp>
+// clang-format on
 
 export module modbus:client;
 import :packet;

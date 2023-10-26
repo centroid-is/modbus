@@ -1,9 +1,11 @@
 module;
+// clang-format off
 #include <exception>
 #include <asio.hpp>
 #include <cstdint>
 #include <span>
 #include <utility>
+// clang-format on
 
 export module modbus:tcp;
 

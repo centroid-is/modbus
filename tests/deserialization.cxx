@@ -1,9 +1,11 @@
+// clang-format off
 #include <exception>
 #include <array>
 #include <iostream>
 #include <span>
 #include <boost/ut.hpp>
 #include <expected>
+// clang-format on
 
 import modbus;
 

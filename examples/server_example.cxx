@@ -1,8 +1,10 @@
 // Copyright (c) 2023, Skaginn3x (https://skaginn3x.com)
 
+// clang-format off
 #include <exception>
 #include <asio.hpp>
 #include <iostream>
+// clang-format on
 
 import modbus;
 

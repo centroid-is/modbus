@@ -1,9 +1,11 @@
 module;
 #include <system_error>
+// clang-format off
 #include <expected>
 #include <exception>
 #include <asio.hpp>
 #include <span>
+// clang-format on
 export module modbus:deserialize;
 import :function;
 import :error;

@@ -5,8 +5,10 @@ module;
 #include <ranges>
 #include <string>
 
+// clang-format off
 #include <exception>
 #include <asio.hpp>
+// clang-format on
 #include <asio/experimental/awaitable_operators.hpp>
 export module modbus:server;
 import :tcp;
