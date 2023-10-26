@@ -3,11 +3,13 @@
 // Used to generate test data from known working modbus clients
 // fe mbpoll
 
+#include <exception>
 #include <asio.hpp>
 #include <iostream>
 
 namespace ip = asio::ip;
 using tcp = ip::tcp;
+
 
 int main() {
   asio::io_context ctx;
