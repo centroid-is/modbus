@@ -141,6 +141,7 @@ auto handle_connection(tcp::socket client, auto&& handler) -> awaitable<void> {
   co_await wait_a_minute.async_wait(asio::use_awaitable);
 }
 
+export
 template <typename server_handler_t>
 struct server {
   explicit server(asio::io_context& io_context, std::shared_ptr<server_handler_t>& handler, int port)

@@ -2,12 +2,6 @@
 
 #include <boost/ut.hpp>
 
-#include "../src/tcp.cxx"
-#include "modbus/impl/deserialize_base.hpp"
-#include "modbus/impl/deserialize_request.hpp"
-#include "modbus/impl/deserialize_response.hpp"
-#include "modbus/impl/serialize_base.hpp"
-
 void print_bytes(std::span<uint8_t> data) {
   for (auto& k : data) {
     std::cout << static_cast<int>(k) << " ";

@@ -4,7 +4,7 @@ module;
 #include <exception>
 #include <asio.hpp>
 #include <span>
-module modbus:deserialize;
+export module modbus:deserialize;
 import :function;
 import :error;
 

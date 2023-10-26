@@ -3,15 +3,15 @@ enable_testing()
 find_package(ut CONFIG REQUIRED)
 
 # Binary encoding tests
-add_executable(serialization serialization.cpp)
+add_executable(serialization serialization.cxx)
 target_link_libraries(serialization PRIVATE Boost::ut modbus)
 add_test(NAME serialization COMMAND serialization)
 
 add_executable(deserialization deserialization.cxx)
-target_link_libraries(deserialization boost.ut modbus)
+target_link_libraries(deserialization PRIVATE Boost::ut modbus)
 add_test(NAME deserialization COMMAND deserialization)
 
-add_executable(integration integration.cpp)
+add_executable(integration integration.cxx)
 target_link_libraries(integration PRIVATE Boost::ut modbus)
 add_test(NAME integration COMMAND integration)
 

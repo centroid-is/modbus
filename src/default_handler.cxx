@@ -7,7 +7,7 @@ import :error;
 
 // TODO: Create a simpler default handler and write tests for both
 namespace modbus {
-struct default_handler {
+export struct default_handler {
   default_handler() : registers(0x20000), coils(0x20000), input_registers(0x20000), desc_input(0x20000) {}
 
   modbus::response::read_coils handle(uint8_t, const modbus::request::read_coils& req, modbus::errc_t&) const {

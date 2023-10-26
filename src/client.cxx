@@ -17,7 +17,7 @@ using asio::async_compose;
 using tcp = ip::tcp;
 
 /// A connection to a Modbus server.
-class client {
+export class client {
 protected:
   /// Execution context
   asio::io_context& ctx_;

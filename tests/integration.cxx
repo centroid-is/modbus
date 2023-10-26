@@ -1,9 +1,10 @@
-#include <array>
-#include "../src/client.cxx"
-#include "../src/default_handler.cxx"
-#include "../src/server.cxx"
 
+#include <exception>
+#include <asio.hpp>
+#include <array>
 #include <boost/ut.hpp>
+
+import modbus;
 
 int main() {
   using boost::ut::operator""_test;
