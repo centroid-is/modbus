@@ -2,7 +2,7 @@
 
 #include <boost/ut.hpp>
 
-#include <modbus/tcp.hpp>
+#include "../src/tcp.cxx"
 #include "modbus/impl/deserialize_base.hpp"
 #include "modbus/impl/deserialize_request.hpp"
 #include "modbus/impl/deserialize_response.hpp"

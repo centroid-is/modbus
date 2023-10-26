@@ -1,8 +1,11 @@
-#pragma once
+module;
+#include <exception>
 #include <asio.hpp>
 #include <cstdint>
 #include <span>
 #include <utility>
+
+export module modbus:tcp;
 
 namespace modbus {
 

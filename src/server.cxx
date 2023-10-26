@@ -1,21 +1,19 @@
-#pragma once
-
+module;
 #include <array>
 #include <expected>
 #include <iostream>
 #include <ranges>
 #include <string>
 
-#include <asio/as_tuple.hpp>
+#include <exception>
+#include <asio.hpp>
 #include <asio/experimental/awaitable_operators.hpp>
-
-#include <modbus/error.hpp>
-#include <modbus/impl/deserialize.hpp>
-#include <modbus/impl/serialize.hpp>
-#include <modbus/request.hpp>
-#include <modbus/response.hpp>
-#include <modbus/tcp.hpp>
-#include "../../src/functions.cxx"
+export module modbus:server;
+import :tcp;
+import :error;
+import :packet;
+import :deserialize;
+import :function;
 
 namespace modbus {
 

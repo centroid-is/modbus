@@ -1,6 +1,7 @@
+module;
+#include <cstddef>
+export module modbus:constants;
 
-
-#pragma once
 
 namespace modbus {
 // Because the modbus protocol was first

@@ -1,7 +1,9 @@
+#include <exception>
 #include <array>
 #include <iostream>
 #include <span>
 #include <boost/ut.hpp>
+#include <expected>
 
 import modbus;
 

@@ -2,11 +2,13 @@
 module;
 
 #include <expected>
+#include <exception>
 #include <asio.hpp>
 
 export module modbus:client;
-//import :deserialize;
-//import :serialize;
+import :packet;
+import :tcp;
+import :constants;
 
 namespace modbus {
 namespace ip = asio::ip;

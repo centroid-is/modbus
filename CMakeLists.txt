@@ -27,8 +27,16 @@ add_library(modbus)
 target_sources(modbus
         PUBLIC FILE_SET CXX_MODULES FILES
         src/modbus.cxx
-        src/functions.cxx
+        src/function.cxx
         src/client.cxx
+        src/packet.cxx
+        src/error.cxx
+        src/deserialize.cxx
+        src/serialize.cxx
+        src/tcp.cxx
+        src/constants.cxx
+        src/server.cxx
+        src/default_handler.cxx
 )
 
 target_link_libraries(modbus PUBLIC asio)

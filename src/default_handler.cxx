@@ -1,7 +1,9 @@
-#pragma once
-
-#include <modbus/error.hpp>
-#include <modbus/server.hpp>
+module;
+#include <cstdint>
+#include <vector>
+export module modbus:default_handler;
+import :packet;
+import :error;
 
 // TODO: Create a simpler default handler and write tests for both
 namespace modbus {

@@ -1,9 +1,10 @@
 // Copyright (c) 2023, Skaginn3x (https://skaginn3x.com)
 
+#include <exception>
+#include <asio.hpp>
 #include <iostream>
 
-#include <modbus/default_handler.hpp>
-#include <modbus/server.hpp>
+import modbus;
 
 int main(int argc, char* argv[]) {
   uint16_t port = 1502;

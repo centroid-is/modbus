@@ -1,45 +1,12 @@
-// Copyright (c) 2017, Fizyr (https://fizyr.com)
-// Copyright (c) 2023, Skaginn3x (https://skaginn3x.com)
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//     * Redistributions of source code must retain the above copyright
-//       notice, this list of conditions and the following disclaimer.
-//     * Redistributions in binary form must reproduce the above copyright
-//       notice, this list of conditions and the following disclaimer in the
-//       documentation and/or other materials provided with the distribution.
-//     * Neither the name of the copyright holder(s) nor the
-//       names of its contributors may be used to endorse or promote products
-//       derived from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-#pragma once
-
-#include <bitset>
-#include <cassert>
-#include <cstdint>
-#include <expected>
-#include <span>
-#include <string>
+module;
 #include <system_error>
-#include <vector>
-
-// TODO: This include is only here for ntohs
-//  Find a better cross platform way to include this.
+#include <expected>
+#include <exception>
 #include <asio.hpp>
-
-#include <modbus/error.hpp>
-#include "../../../src/functions.cxx"
+#include <span>
+module modbus:deserialize;
+import :function;
+import :error;
 
 namespace modbus::impl {
 
@@ -81,7 +48,7 @@ namespace modbus::impl {
 
 /// Parse and check the function code.
 [[nodiscard]] inline auto deserialize_function(std::ranges::range auto data, function_e expected_function)
-    -> std::expected<function_e, std::error_code> {
+-> std::expected<function_e, std::error_code> {
   static_assert(sizeof(typename decltype(data)::value_type) == 1);
   if (auto error = check_length(data.size(), 1)) {
     return std::unexpected(error);
@@ -94,7 +61,7 @@ namespace modbus::impl {
 
 /// Reads a Modbus list of bits from a byte sequence.
 [[nodiscard]] auto deserialize_bit_list(std::ranges::range auto data, std::size_t const bit_count)
-    -> std::expected<std::vector<bool>, std::error_code> {
+-> std::expected<std::vector<bool>, std::error_code> {
   // Check available data length.
   size_t byte_count = (bit_count + 7) / 8;
   if (auto error = check_length(data.size(), byte_count)) {
@@ -114,7 +81,7 @@ namespace modbus::impl {
 
 /// Read a Modbus vector of 16 bit words from a byte sequence.
 [[nodiscard]] auto deserialize_word_list(std::ranges::range auto data, std::size_t word_count)
-    -> std::expected<std::vector<std::uint16_t>, std::error_code> {
+-> std::expected<std::vector<std::uint16_t>, std::error_code> {
   static_assert(sizeof(typename decltype(data)::value_type) == 1);
   // Check available data length.
   if (auto error = check_length(data.size(), word_count * 2)) {
@@ -132,7 +99,7 @@ namespace modbus::impl {
 
 /// Read a Modbus vector of bits from a byte sequence representing a request message.
 [[nodiscard]] auto deserialize_bits_request(std::ranges::range auto data)
-    -> std::expected<std::vector<bool>, std::error_code> {
+-> std::expected<std::vector<bool>, std::error_code> {
   if (auto error = check_length(data.size(), 3)) {
     return std::unexpected(error);
   }
@@ -151,7 +118,7 @@ namespace modbus::impl {
 
 /// Read a Modbus vector of bits from a byte sequence representing a response message.
 [[nodiscard]] auto deserialize_bits_response(std::ranges::range auto data)
-    -> std::expected<std::vector<bool>, std::error_code> {
+-> std::expected<std::vector<bool>, std::error_code> {
   if (auto error = check_length(data.size(), 2)) {
     return std::unexpected(error);
   }
@@ -163,7 +130,7 @@ namespace modbus::impl {
 
 /// Read a Modbus vector of 16 bit words from a byte sequence representing a request message.
 [[nodiscard]] auto deserialize_words_request(std::ranges::range auto data)
-    -> std::expected<std::vector<uint16_t>, std::error_code> {
+-> std::expected<std::vector<uint16_t>, std::error_code> {
   if (auto error = check_length(data.size(), 3)) {
     return std::unexpected(error);
   }
@@ -182,7 +149,7 @@ namespace modbus::impl {
 
 /// Read a Modbus vector of 16 bit words from a byte sequence representing a response message.
 [[nodiscard]] auto deserialize_words_response(std::ranges::range auto data)
-    -> std::expected<std::vector<uint16_t>, std::error_code> {
+-> std::expected<std::vector<uint16_t>, std::error_code> {
   if (auto error = check_length(data.size(), 3)) {
     return std::unexpected(error);
   }

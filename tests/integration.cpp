@@ -1,7 +1,7 @@
 #include <array>
-#include <modbus/default_handler.hpp>
-#include <modbus/server.hpp>
 #include "../src/client.cxx"
+#include "../src/default_handler.cxx"
+#include "../src/server.cxx"
 
 #include <boost/ut.hpp>
 
