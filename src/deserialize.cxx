@@ -50,7 +50,7 @@ export namespace modbus::impl {
 
 /// Parse and check the function code.
 [[nodiscard]] inline auto deserialize_function(std::ranges::range auto data, function_e expected_function)
--> std::expected<function_e, std::error_code> {
+    -> std::expected<function_e, std::error_code> {
   static_assert(sizeof(typename decltype(data)::value_type) == 1);
   if (auto error = check_length(data.size(), 1)) {
     return std::unexpected(error);
@@ -63,7 +63,7 @@ export namespace modbus::impl {
 
 /// Reads a Modbus list of bits from a byte sequence.
 [[nodiscard]] auto deserialize_bit_list(std::ranges::range auto data, std::size_t const bit_count)
--> std::expected<std::vector<bool>, std::error_code> {
+    -> std::expected<std::vector<bool>, std::error_code> {
   // Check available data length.
   size_t byte_count = (bit_count + 7) / 8;
   if (auto error = check_length(data.size(), byte_count)) {
@@ -83,7 +83,7 @@ export namespace modbus::impl {
 
 /// Read a Modbus vector of 16 bit words from a byte sequence.
 [[nodiscard]] auto deserialize_word_list(std::ranges::range auto data, std::size_t word_count)
--> std::expected<std::vector<std::uint16_t>, std::error_code> {
+    -> std::expected<std::vector<std::uint16_t>, std::error_code> {
   static_assert(sizeof(typename decltype(data)::value_type) == 1);
   // Check available data length.
   if (auto error = check_length(data.size(), word_count * 2)) {
@@ -101,7 +101,7 @@ export namespace modbus::impl {
 
 /// Read a Modbus vector of bits from a byte sequence representing a request message.
 [[nodiscard]] auto deserialize_bits_request(std::ranges::range auto data)
--> std::expected<std::vector<bool>, std::error_code> {
+    -> std::expected<std::vector<bool>, std::error_code> {
   if (auto error = check_length(data.size(), 3)) {
     return std::unexpected(error);
   }
@@ -120,7 +120,7 @@ export namespace modbus::impl {
 
 /// Read a Modbus vector of bits from a byte sequence representing a response message.
 [[nodiscard]] auto deserialize_bits_response(std::ranges::range auto data)
--> std::expected<std::vector<bool>, std::error_code> {
+    -> std::expected<std::vector<bool>, std::error_code> {
   if (auto error = check_length(data.size(), 2)) {
     return std::unexpected(error);
   }
@@ -132,7 +132,7 @@ export namespace modbus::impl {
 
 /// Read a Modbus vector of 16 bit words from a byte sequence representing a request message.
 [[nodiscard]] auto deserialize_words_request(std::ranges::range auto data)
--> std::expected<std::vector<uint16_t>, std::error_code> {
+    -> std::expected<std::vector<uint16_t>, std::error_code> {
   if (auto error = check_length(data.size(), 3)) {
     return std::unexpected(error);
   }
@@ -151,7 +151,7 @@ export namespace modbus::impl {
 
 /// Read a Modbus vector of 16 bit words from a byte sequence representing a response message.
 [[nodiscard]] auto deserialize_words_response(std::ranges::range auto data)
--> std::expected<std::vector<uint16_t>, std::error_code> {
+    -> std::expected<std::vector<uint16_t>, std::error_code> {
   if (auto error = check_length(data.size(), 3)) {
     return std::unexpected(error);
   }

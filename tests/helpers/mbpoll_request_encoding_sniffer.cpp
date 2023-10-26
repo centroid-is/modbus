@@ -3,8 +3,8 @@
 // Used to generate test data from known working modbus clients
 // fe mbpoll
 
-#include <exception>
 #include <asio.hpp>
+#include <exception>
 #include <iostream>
 
 namespace ip = asio::ip;

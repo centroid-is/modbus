@@ -2,7 +2,6 @@ module;
 #include <cstddef>
 export module modbus:constants;
 
-
 namespace modbus {
 // Because the modbus protocol was first
 // implemented for RS485 the max pdu size is 253

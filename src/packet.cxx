@@ -24,9 +24,9 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 module;
 #include <cstdint>
+#include <expected>
 #include <variant>
 #include <vector>
-#include <expected>
 export module modbus:packet;
 
 import :deserialize;
@@ -812,7 +812,7 @@ auto request_from_function(function_e func) -> std::expected<request::requests, 
 
 /// Deserialize request. Expect a function code.
 [[nodiscard]] auto deserialize_request(std::ranges::range auto data, function_e const expected_function)
--> std::expected<request::requests, std::error_code> {
+    -> std::expected<request::requests, std::error_code> {
   // Deserialize the function
   auto expect_function = deserialize_function(std::span(data).subspan(0), expected_function);
   if (!expect_function) {
@@ -867,7 +867,7 @@ auto response_from_function(function_e func) -> std::expected<response::response
 
 /// Deserialize response. Expect a function code.
 [[nodiscard]] auto deserialize_response(std::ranges::range auto data, function_e const expected_function)
--> std::expected<response::responses, std::error_code> {
+    -> std::expected<response::responses, std::error_code> {
   // Deserialize the function
   auto expect_function = deserialize_function(std::span(data).subspan(0), expected_function);
   if (!expect_function) {
