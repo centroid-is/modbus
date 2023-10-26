@@ -31,7 +31,7 @@ export module modbus:error;
 namespace modbus {
 /// Modbus error code constants.
 namespace errc {
-enum errc_t {
+export enum errc_t {
   no_error = 0x0,
   illegal_function = 0x01,
   illegal_data_address = 0x02,

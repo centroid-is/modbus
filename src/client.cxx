@@ -11,6 +11,7 @@ export module modbus:client;
 import :packet;
 import :tcp;
 import :constants;
+import :error;
 
 namespace modbus {
 namespace ip = asio::ip;
