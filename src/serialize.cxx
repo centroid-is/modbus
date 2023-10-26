@@ -7,7 +7,7 @@ module;
 export module modbus:serialize;
 import :function;
 
-namespace modbus::impl {
+export namespace modbus::impl {
 
 /// Convert a boolean to a uint16 Modbus representation.
 inline auto bool_to_uint16(bool value) -> std::uint16_t {

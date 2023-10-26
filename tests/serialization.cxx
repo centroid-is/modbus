@@ -1,6 +1,9 @@
 #include <array>
 
 #include <boost/ut.hpp>
+#include <span>
+
+import modbus;
 
 void print_bytes(std::span<uint8_t> data) {
   for (auto& k : data) {

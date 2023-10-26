@@ -32,8 +32,9 @@ export module modbus:packet;
 import :deserialize;
 import :serialize;
 import :function;
+import :tcp;
 
-namespace modbus {
+export namespace modbus {
 namespace request {
 struct read_coils;
 struct read_discrete_inputs;

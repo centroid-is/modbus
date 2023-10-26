@@ -8,7 +8,7 @@ export module modbus:deserialize;
 import :function;
 import :error;
 
-namespace modbus::impl {
+export namespace modbus::impl {
 
 /// Check if length is sufficient.
 [[nodiscard]] inline auto check_length(std::size_t actual, std::size_t needed) -> std::error_code {
