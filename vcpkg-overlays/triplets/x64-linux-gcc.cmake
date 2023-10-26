@@ -3,8 +3,15 @@ set(VCPKG_LIBRARY_LINKAGE static)
 set(VCPKG_CRT_LINKAGE dynamic)
 set(VCPKG_CMAKE_SYSTEM_NAME Linux)
 
+find_program(GCC-GIT "gcc-git")
 find_program(GCC-13 "g++-13")
-if(GCC-13)
+if(GCC-GIT)
+  set(CMAKE_C_COMPILER gcc-git)
+  set(CMAKE_CXX_COMPILER g++-git)
+
+  set(ENV{CC} gcc-git)
+  set(ENV{CXX} g++-git)
+elseif(GCC-13)
   set(CMAKE_C_COMPILER gcc-13)
   set(CMAKE_CXX_COMPILER g++-13)
 

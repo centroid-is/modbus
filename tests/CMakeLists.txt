@@ -1,5 +1,10 @@
 enable_testing()
 
+# This is required for gcc
+# it looks like it populates __cpp_modules
+# but has no implementation of import std;
+add_compile_definitions(BOOST_UT_DISABLE_MODULE)
+
 find_package(ut CONFIG REQUIRED)
 
 # Binary encoding tests

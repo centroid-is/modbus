@@ -4,6 +4,7 @@ module;
 #include <expected>
 #include <exception>
 #include <asio.hpp>
+#include <bitset>
 #include <span>
 // clang-format on
 export module modbus:deserialize;
