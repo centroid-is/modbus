@@ -2,7 +2,6 @@ module;
 #include <system_error>
 // clang-format off
 #include <expected>
-#include <exception>
 #include <asio.hpp>
 #include <bitset>
 #include <span>

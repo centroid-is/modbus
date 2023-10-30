@@ -1,5 +1,4 @@
 // clang-format off
-#include <exception>
 #include <asio.hpp>
 #include <array>
 #include <boost/ut.hpp>

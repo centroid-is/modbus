@@ -3,7 +3,6 @@ module;
 
 // clang-format off
 #include <expected>
-#include <exception>
 #include <asio.hpp>
 // clang-format on
 
