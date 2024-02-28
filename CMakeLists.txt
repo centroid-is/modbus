@@ -29,22 +29,30 @@ add_library(modbus
   src/error.cpp)
 
 target_link_libraries(modbus PUBLIC asio)
-target_include_directories(modbus PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+target_include_directories(modbus PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+)
+
+# target_include_directories(ipc
+#         PUBLIC
+#         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/inc/public>
+#         $<INSTALL_INTERFACE:include>
+#         $<BUILD_INTERFACE:${AZMQ_INCLUDE_DIRS}>
+# )
 
 include(GNUInstallDirs)
 
 install(TARGETS modbus
-        EXPORT modbus-targets
+        EXPORT modbus
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
         BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
-install(DIRECTORY
-        ${CMAKE_CURRENT_SOURCE_DIR}/include/
-        # ${INCLUDE_DIR}
-        DESTINATION include)
+
+# install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/ DESTINATION include)
 
 if (BUILD_EXAMPLES)
   add_subdirectory(examples)
