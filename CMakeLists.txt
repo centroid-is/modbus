@@ -34,13 +34,6 @@ target_include_directories(modbus PUBLIC
         $<INSTALL_INTERFACE:include>
 )
 
-# target_include_directories(ipc
-#         PUBLIC
-#         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/inc/public>
-#         $<INSTALL_INTERFACE:include>
-#         $<BUILD_INTERFACE:${AZMQ_INCLUDE_DIRS}>
-# )
-
 include(GNUInstallDirs)
 
 install(TARGETS modbus
