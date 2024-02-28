@@ -44,7 +44,7 @@ target_include_directories(modbus PUBLIC
 include(GNUInstallDirs)
 
 install(TARGETS modbus
-        EXPORT modbus
+        EXPORT modbusTargets
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -83,3 +83,37 @@ add_custom_target(
 
 
 message("Using ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION} for ${CMAKE_SYSTEM_PROCESSOR}")
+
+# Let's go ahead and install everything properly
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
+
+set(modbus_PACKAGE_NAME modbus)
+set(modbus_INSTALL_CMAKEDIR ${CMAKE_INSTALL_DATADIR}/${modbus_PACKAGE_NAME})
+
+write_basic_package_version_file(
+        "${CMAKE_CURRENT_BINARY_DIR}/${modbus_PACKAGE_NAME}ConfigVersion.cmake"
+        VERSION ${CMAKE_PROJECT_VERSION}
+        COMPATIBILITY SameMajorVersion
+)
+
+configure_package_config_file(
+        "${CMAKE_CURRENT_LIST_DIR}/${modbus_PACKAGE_NAME}Config.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/${modbus_PACKAGE_NAME}Config.cmake"
+        INSTALL_DESTINATION ${modbus_INSTALL_CMAKEDIR}
+)
+
+install(EXPORT ${modbus_PACKAGE_NAME}Targets DESTINATION ${modbus_INSTALL_CMAKEDIR})
+install(
+        FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/${modbus_PACKAGE_NAME}ConfigVersion.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/${modbus_PACKAGE_NAME}Config.cmake"
+        DESTINATION ${modbus_INSTALL_CMAKEDIR}
+)
+
+install(
+        EXPORT ${modbus_PACKAGE_NAME}Targets
+        NAMESPACE modbus::
+        DESTINATION ${modbus_INSTALL_CMAKEDIR}
+)
+
