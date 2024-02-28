@@ -51,6 +51,7 @@ install(TARGETS modbus
         PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
         BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/ DESTINATION include)
 
 # install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/ DESTINATION include)
 
@@ -79,3 +80,6 @@ add_custom_target(
         --dry-run
         ${ALL_SOURCE_FILES}
 )
+
+
+message("Using ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION} for ${CMAKE_SYSTEM_PROCESSOR}")
