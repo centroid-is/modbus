@@ -74,7 +74,6 @@ add_custom_target(
 )
 
 
-message("Using ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION} for ${CMAKE_SYSTEM_PROCESSOR}")
 
 # Let's go ahead and install everything properly
 include(GNUInstallDirs)
