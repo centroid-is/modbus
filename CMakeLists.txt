@@ -31,6 +31,21 @@ add_library(modbus
 target_link_libraries(modbus PUBLIC asio)
 target_include_directories(modbus PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 
+include(GNUInstallDirs)
+
+install(TARGETS modbus
+        EXPORT modbus-targets
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+install(DIRECTORY
+        ${CMAKE_CURRENT_SOURCE_DIR}/inc/public/
+        # ${INCLUDE_DIR}
+        DESTINATION include)
+
 if (BUILD_EXAMPLES)
   add_subdirectory(examples)
 endif()
