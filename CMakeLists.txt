@@ -42,7 +42,7 @@ install(TARGETS modbus
         BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 install(DIRECTORY
-        ${CMAKE_CURRENT_SOURCE_DIR}/inc/public/
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/
         # ${INCLUDE_DIR}
         DESTINATION include)
 
