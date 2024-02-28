@@ -46,7 +46,6 @@ install(TARGETS modbus
 )
 install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/ DESTINATION include)
 
-# install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/ DESTINATION include)
 
 if (BUILD_EXAMPLES)
   add_subdirectory(examples)
