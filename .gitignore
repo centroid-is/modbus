@@ -6,3 +6,4 @@ vcpkg/
 .vscode
 CMakeUserPresets.json
 *.kdev4
+install/*
