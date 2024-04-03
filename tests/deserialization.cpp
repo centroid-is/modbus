@@ -233,6 +233,24 @@ int main() {
     expect(request.or_mask == 16);
   };
 
+  "deserialize request read_write_multiple_registers"_test = []() {
+    // Request captured from M580 PLC
+    std::array<std::uint8_t, 21> data = { 0x04, 0x8c, 0x00, 0x00, 0x00, 0x0d, 0xff, 0x17, 0x00, 0x00,
+                                          0x00, 0x27, 0x00, 0x00, 0x00, 0x01, 0x02, 0x00, 0x00 };
+
+    auto expected_request = deserialize_request(std::span(data).subspan(modbus::tcp_mbap::size),
+                                                modbus::function_e::read_write_multiple_registers);
+    expect(expected_request.has_value());
+    expect(holds_alternative<modbus::request::read_write_multiple_registers>(expected_request.value()));
+    auto request = std::get<modbus::request::read_write_multiple_registers>(expected_request.value());
+    expect(request.function == modbus::function_e::read_write_multiple_registers);
+    expect(request.values.size() == 1);
+    expect(request.values[0] == 0);
+    expect(request.read_address == 0);
+    expect(request.read_count == 39);
+    expect(request.write_address == 0);
+  };
+
   // ATH, mbpoll -r parameter is from 1 but the modbus addresses
   // are from 0. So the address 1 in mbpoll is 0 in modbus.
 
@@ -388,5 +406,25 @@ int main() {
     expect(response.and_mask == 15);
     expect(response.or_mask == 16);
   };
+
+  "deserialize response read_write_multiple_registers"_test = []() {
+    // Response captured from M580 PLC
+    auto data =
+        std::array<uint8_t, 29>{ 0x00, 0x0e, 0x00, 0x00, 0x00, 0x17, 0xfc, 0x17, 0x14, 0x00, 0x01, 0x00, 0x02, 0x00, 0x03,
+                                 0x00, 0x04, 0x00, 0x05, 0x00, 0x06, 0x00, 0x07, 0x00, 0x08, 0x00, 0x09, 0x00, 0x0a };
+
+    auto expected_response = deserialize_response(std::span(data).subspan(modbus::tcp_mbap::size),
+                                                  modbus::function_e::read_write_multiple_registers);
+    expect(expected_response.has_value());
+    expect(holds_alternative<modbus::response::read_write_multiple_registers>(expected_response.value()));
+    auto response = std::get<modbus::response::read_write_multiple_registers>(expected_response.value());
+    expect(response.function == modbus::function_e::read_write_multiple_registers);
+    expect(response.values.size() == 10);
+    std::uint16_t i = 0;
+    for (auto& elem : response.values) {
+      expect(elem == ++i);
+    }
+  };
+
   return 0;
 }
