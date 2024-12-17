@@ -13,23 +13,16 @@ jobs:
   build:
     name: 'build'
     runs-on: ubuntu-latest
-    container: ghcr.io/skaginn3x/skaginn3x/framework/tfc-toolchain:sha-f8ab815
-    strategy:
-      fail-fast: true
-      matrix:
-        compiler: ['gcc', 'clang']
+    container: nixos/nix:2.24.11
     steps:
-      - uses: actions/checkout@v3
-      - name: Restore artifacts, or setup vcpkg
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgGitCommitId: 'fbc868ee5e12e3e81f464104be246ec06553c274'
-          vcpkgJsonGlob: 'vcpkg.json'
-
-      - name: build with cmake
-        uses: lukka/run-cmake@v10
-        with:
-          buildPreset: 'build-${{ matrix.compiler }}'
-          testPreset: 'test-${{ matrix.compiler }}'
-          configurePreset: 'conf-${{ matrix.compiler }}'
-          configurePresetAdditionalArgs: "['-DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake']"
+      - name: Create os-release file
+        run: echo "ID=nixos" > /etc/os-release
+      - uses: actions/checkout@v4
+      - name: Build
+        run: |
+          nix-shell shell.nix
+          mkdir build && cd build
+          cmake ..
+          cmake --build .
+      - name: Test
+        run: ctest

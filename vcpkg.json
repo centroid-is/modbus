@@ -1,9 +1,0 @@
-{
-  "name": "modbus",
-  "version": "2024.4.1",
-  "description": "Modbus protocol implementation, based on boost asio",
-  "dependencies": [
-    "asio",
-    "bext-ut"
-  ]
-}
