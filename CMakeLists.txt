@@ -12,7 +12,8 @@ add_compile_definitions(BOOST_UT_DISABLE_MODULE)
 
 set(CMAKE_CXX_STANDARD 23)
 
-find_package(asio REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(asio REQUIRED IMPORTED_TARGET GLOBAL asio)
 
 set_property(GLOBAL PROPERTY CTEST_TARGETS_ADDED 1)
 include(CTest)
@@ -28,7 +29,7 @@ add_feature_info("BUILD_EXAMPLES" BUILD_EXAMPLES "Indicates whether examples sho
 add_library(modbus
   src/error.cpp)
 
-target_link_libraries(modbus PUBLIC asio)
+target_link_libraries(modbus PUBLIC PkgConfig::asio)
 target_include_directories(modbus PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
