@@ -1,5 +1,6 @@
 // Copyright (c) 2017, Fizyr (https://fizyr.com)
 // Copyright (c) 2023, Skaginn3x (https://skaginn3x.com)
+// Copyright (c) 2025, Centroid ehf (https://centroid.is)
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -71,12 +72,9 @@ struct read_coils {
     return {};
   }
 
-  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
-    std::vector<uint8_t> ret_value;
-    ret_value.emplace_back(impl::serialize_function(function));
-    auto bit_response = impl::serialize_bits_response(values);
-    ret_value.insert(ret_value.end(), bit_response.begin(), bit_response.end());
-    return ret_value;
+  [[nodiscard]] auto serialize(res_buf_t& buffer, std::size_t offset) -> std::size_t {
+    offset = impl::serialize_function(function, buffer, offset);
+    return impl::serialize_bits_response(values, buffer, offset);
   }
 };
 
@@ -103,12 +101,9 @@ struct read_discrete_inputs {
     return {};
   }
 
-  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
-    std::vector<uint8_t> ret_value;
-    ret_value.emplace_back(impl::serialize_function(function));
-    auto bit_response = impl::serialize_bits_response(values);
-    ret_value.insert(ret_value.end(), bit_response.begin(), bit_response.end());
-    return ret_value;
+  [[nodiscard]] auto serialize(res_buf_t& buffer, std::size_t offset) const -> std::size_t {
+    offset = impl::serialize_function(function, buffer, offset);
+    return impl::serialize_bits_response(values, buffer, offset);
   }
 };
 
@@ -135,12 +130,10 @@ struct read_holding_registers {
     return {};
   }
 
-  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
-    std::vector<uint8_t> ret_value;
-    ret_value.emplace_back(impl::serialize_function(function));
-    auto word_response = impl::serialize_words_response(values);
-    ret_value.insert(ret_value.end(), word_response.begin(), word_response.end());
-    return ret_value;
+  [[nodiscard]] auto serialize(res_buf_t& buffer, std::size_t offset) -> std::size_t {
+    offset = impl::serialize_function(function, buffer, offset);
+    offset = impl::serialize_words_response(values, buffer, offset);
+    return offset;
   }
 };
 
@@ -167,12 +160,10 @@ struct read_input_registers {
     return {};
   }
 
-  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
-    std::vector<uint8_t> ret_value;
-    ret_value.emplace_back(impl::serialize_function(function));
-    auto word_response = impl::serialize_words_response(values);
-    ret_value.insert(ret_value.end(), word_response.begin(), word_response.end());
-    return ret_value;
+  [[nodiscard]] auto serialize(res_buf_t& buffer, std::size_t offset) -> std::size_t {
+    offset = impl::serialize_function(function, buffer, offset);
+    offset = impl::serialize_words_response(values, buffer, offset);
+    return offset;
   }
 };
 
@@ -204,14 +195,11 @@ struct write_single_coil {
     return {};
   }
 
-  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
-    std::vector<uint8_t> ret_value;
-    ret_value.emplace_back(impl::serialize_function(function));
-    auto arr_address = impl::serialize_16_array(impl::serialize_be16(address));
-    ret_value.insert(ret_value.end(), arr_address.begin(), arr_address.end());
-    auto arr_value = impl::serialize_16_array(impl::serialize_be16(impl::bool_to_uint16(value)));
-    ret_value.insert(ret_value.end(), arr_value.begin(), arr_value.end());
-    return ret_value;
+  [[nodiscard]] auto serialize(res_buf_t& buffer, std::size_t offset) const -> std::size_t {
+    offset = impl::serialize_function(function, buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(address), buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(impl::bool_to_uint16(value)), buffer, offset);
+    return offset;
   }
 };
 
@@ -238,14 +226,11 @@ struct write_single_register {
     return {};
   }
 
-  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
-    std::vector<uint8_t> ret_value;
-    ret_value.emplace_back(impl::serialize_function(function));
-    auto arr_address = impl::serialize_16_array(impl::serialize_be16(address));
-    ret_value.insert(ret_value.end(), arr_address.begin(), arr_address.end());
-    auto arr_value = impl::serialize_16_array(impl::serialize_be16(value));
-    ret_value.insert(ret_value.end(), arr_value.begin(), arr_value.end());
-    return ret_value;
+  [[nodiscard]] auto serialize(res_buf_t& buffer, std::size_t offset) -> std::size_t {
+    offset = impl::serialize_function(function, buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(address), buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(value), buffer, offset);
+    return offset;
   }
 };
 
@@ -272,14 +257,11 @@ struct write_multiple_coils {
     return {};
   }
 
-  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
-    std::vector<uint8_t> ret_value;
-    ret_value.emplace_back(impl::serialize_function(function));
-    auto arr_address = impl::serialize_16_array(impl::serialize_be16(address));
-    ret_value.insert(ret_value.end(), arr_address.begin(), arr_address.end());
-    auto arr_count = impl::serialize_16_array(impl::serialize_be16(count));
-    ret_value.insert(ret_value.end(), arr_count.begin(), arr_count.end());
-    return ret_value;
+  [[nodiscard]] auto serialize(res_buf_t& buffer, std::size_t offset) -> std::size_t {
+    offset = impl::serialize_function(function, buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(address), buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(count), buffer, offset);
+    return offset;
   }
 };
 
@@ -306,14 +288,11 @@ struct write_multiple_registers {
     return {};
   }
 
-  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
-    std::vector<uint8_t> ret_value;
-    ret_value.emplace_back(impl::serialize_function(function));
-    auto arr_address = impl::serialize_16_array(impl::serialize_be16(address));
-    ret_value.insert(ret_value.end(), arr_address.begin(), arr_address.end());
-    auto arr_count = impl::serialize_16_array(impl::serialize_be16(count));
-    ret_value.insert(ret_value.end(), arr_count.begin(), arr_count.end());
-    return ret_value;
+  [[nodiscard]] auto serialize(res_buf_t& buffer, std::size_t offset) -> std::size_t {
+    offset = impl::serialize_function(function, buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(address), buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(count), buffer, offset);
+    return offset;
   }
 };
 
@@ -344,16 +323,12 @@ struct mask_write_register {
     return {};
   }
 
-  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
-    std::vector<uint8_t> ret_value;
-    ret_value.emplace_back(impl::serialize_function(function));
-    auto arr_address = impl::serialize_16_array(impl::serialize_be16(address));
-    ret_value.insert(ret_value.end(), arr_address.begin(), arr_address.end());
-    auto arr_and_mask = impl::serialize_16_array(impl::serialize_be16(and_mask));
-    ret_value.insert(ret_value.end(), arr_and_mask.begin(), arr_and_mask.end());
-    auto arr_or_mask = impl::serialize_16_array(impl::serialize_be16(or_mask));
-    ret_value.insert(ret_value.end(), arr_or_mask.begin(), arr_or_mask.end());
-    return ret_value;
+  [[nodiscard]] auto serialize(res_buf_t& buffer, std::size_t offset) -> std::size_t {
+    offset = impl::serialize_function(function, buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(address), buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(and_mask), buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(or_mask), buffer, offset);
+    return offset;
   }
 };
 
@@ -380,12 +355,10 @@ struct read_write_multiple_registers {
     return {};
   }
 
-  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
-    std::vector<uint8_t> ret_value;
-    ret_value.emplace_back(impl::serialize_function(function));
-    auto word_response = impl::serialize_words_response(values);
-    ret_value.insert(ret_value.end(), word_response.begin(), word_response.end());
-    return ret_value;
+  [[nodiscard]] auto serialize(res_buf_t& buffer, std::size_t offset) -> std::size_t {
+    offset = impl::serialize_function(function, buffer, offset);
+    offset = impl::serialize_words_response(values, buffer, offset);
+    return offset;
   }
 };
 

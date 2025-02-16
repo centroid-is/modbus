@@ -22,9 +22,9 @@ int main() {
 
   "serialize_bit_list"_test = []() {
     std::vector<bool> bits = { true, false, true, false, true, false, true, false };
-
-    auto data = modbus::impl::serialize_bit_list(bits);
-    auto back = modbus::impl::deserialize_bit_list(data, bits.size());
+    res_buf_t rbuf;
+    auto size = modbus::impl::serialize_bit_list(bits, rbuf, 0);
+    auto back = modbus::impl::deserialize_bit_list(rbuf, bits.size());
     expect(back.has_value());
     expect(back.value().size() == bits.size());
     for (size_t i = 0; i < bits.size(); i++)
@@ -33,8 +33,9 @@ int main() {
 
   "serialize_bit_request"_test =
       [](const auto& bits) {
-        auto data = modbus::impl::serialize_bits_request(bits);
-        auto back = modbus::impl::deserialize_bits_request(data);
+        res_buf_t rbuf;
+        auto size = modbus::impl::serialize_bits_request(bits, rbuf, 0);
+        auto back = modbus::impl::deserialize_bits_request(rbuf);
         expect(back.has_value());
         expect(back.value().size() == bits.size());
         for (size_t i = 0; i < bits.size(); i++)
@@ -52,8 +53,9 @@ int main() {
 
   "serialize_bit_response"_test =
       [](const auto& bits) {
-        auto data = modbus::impl::serialize_bits_response(bits);
-        auto back = modbus::impl::deserialize_bits_response(data);
+        res_buf_t rbuf;
+        auto size = modbus::impl::serialize_bits_response(bits, rbuf, 0);
+        auto back = modbus::impl::deserialize_bits_response(rbuf);
         expect(back.has_value());
         expect((back.value().size() + 7) / 8 ==
                (bits.size() + 7) / 8);  // the byte count is encoded in the response so we can't compare the sizes directly
@@ -73,8 +75,9 @@ int main() {
   "serialize_word_request"_test = []() {
     std::vector<uint16_t> words = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
 
-    auto data = modbus::impl::serialize_words_request(words);
-    auto back = modbus::impl::deserialize_words_request(data);
+    res_buf_t rbuf;
+    auto size = modbus::impl::serialize_words_request(words, rbuf, 0);
+    auto back = modbus::impl::deserialize_words_request(rbuf);
     expect(back.has_value());
     expect(back.value().size() == words.size());
     for (size_t i = 0; i < words.size(); i++)
@@ -84,8 +87,9 @@ int main() {
   "serialize_words_response"_test = []() {
     std::vector<uint16_t> words = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
 
-    auto data = modbus::impl::serialize_words_response(words);
-    auto back = modbus::impl::deserialize_words_response(data);
+    res_buf_t rbuf;
+    auto size = modbus::impl::serialize_words_response(words, rbuf, 0);
+    auto back = modbus::impl::deserialize_words_response(rbuf);
     expect(back.has_value());
     expect(back.value().size() == words.size());
     for (size_t i = 0; i < words.size(); i++)
@@ -103,11 +107,12 @@ int main() {
     expect(hd.length == 6);
     expect(hd.unit == 1);
 
-    auto buffer = hd.to_bytes();
-    print_bytes(buffer);
+    res_buf_t rbuf;
+    auto size = hd.to_bytes(rbuf, 0);
+    print_bytes(rbuf);
     print_bytes(bytes);
-    for (size_t i = 0; i < buffer.size(); i++)
-      expect(buffer[i] == bytes[i]);
+    for (size_t i = 0; i < tcp_mbap::size; i++)
+      expect(rbuf[i] == bytes[i]);
   };
 
   "serialize request read_coils"_test = []() {
@@ -116,9 +121,10 @@ int main() {
     request.address = 14;
     request.count = 55;
 
-    auto data = request.serialize();
+    res_buf_t rbuf;
+    auto size = request.serialize(rbuf, 0);
     req_t ex_request{};
-    auto error = ex_request.deserialize(data);
+    auto error = ex_request.deserialize(rbuf);
     expect(!error);
     expect(request.address == ex_request.address) << request.address << " " << ex_request.address;
     expect(request.count == ex_request.count) << request.count << " " << ex_request.count;
@@ -130,9 +136,10 @@ int main() {
     request.address = 14;
     request.count = 55;
 
-    auto data = request.serialize();
+    res_buf_t rbuf;
+    auto size = request.serialize(rbuf, 0);
     req_t ex_request{};
-    auto error = ex_request.deserialize(data);
+    auto error = ex_request.deserialize(rbuf);
     expect(!error);
     expect(request.address == ex_request.address) << request.address << " " << ex_request.address;
     expect(request.count == ex_request.count) << request.count << " " << ex_request.count;
@@ -144,9 +151,10 @@ int main() {
     request.address = 14;
     request.count = 55;
 
-    auto data = request.serialize();
+    res_buf_t rbuf;
+    auto size = request.serialize(rbuf, 0);
     req_t ex_request{};
-    auto error = ex_request.deserialize(data);
+    auto error = ex_request.deserialize(rbuf);
     expect(!error);
     expect(request.address == ex_request.address) << request.address << " " << ex_request.address;
     expect(request.count == ex_request.count) << request.count << " " << ex_request.count;
@@ -158,9 +166,10 @@ int main() {
     request.address = 14;
     request.count = 55;
 
-    auto data = request.serialize();
+    res_buf_t rbuf;
+    auto size = request.serialize(rbuf, 0);
     req_t ex_request{};
-    auto error = ex_request.deserialize(data);
+    auto error = ex_request.deserialize(rbuf);
     expect(!error);
     expect(request.address == ex_request.address) << request.address << " " << ex_request.address;
     expect(request.count == ex_request.count) << request.count << " " << ex_request.count;
@@ -171,9 +180,10 @@ int main() {
     request.address = 14;
     request.value = 55;
 
-    auto data = request.serialize();
+    res_buf_t rbuf;
+    auto size = request.serialize(rbuf, 0);
     req_t ex_request{};
-    auto error = ex_request.deserialize(data);
+    auto error = ex_request.deserialize(rbuf);
     expect(!error);
     expect(request.address == ex_request.address) << request.address << " " << ex_request.address;
     expect(request.value == ex_request.value) << request.value << " " << ex_request.value;
@@ -184,9 +194,10 @@ int main() {
     request.address = 14;
     request.value = 55;
 
-    auto data = request.serialize();
+    res_buf_t rbuf;
+    auto size = request.serialize(rbuf, 0);
     req_t ex_request{};
-    auto error = ex_request.deserialize(data);
+    auto error = ex_request.deserialize(rbuf);
     expect(!error);
     expect(request.address == ex_request.address) << request.address << " " << ex_request.address;
     expect(request.value == ex_request.value) << request.value << " " << ex_request.value;
@@ -197,9 +208,10 @@ int main() {
     request.address = 14;
     request.values = { false, true, false, true, true, false, false };
 
-    auto data = request.serialize();
+    res_buf_t rbuf;
+    auto size = request.serialize(rbuf, 0);
     req_t ex_request{};
-    auto error = ex_request.deserialize(data);
+    auto error = ex_request.deserialize(rbuf);
     expect(!error);
     expect(request.address == ex_request.address) << request.address << " " << ex_request.address;
     expect(request.values.size() == ex_request.values.size()) << request.values.size() << " " << ex_request.values.size();
@@ -212,9 +224,10 @@ int main() {
     request.address = 14;
     request.values = { 1, 2, 3, 4, 5, 6, 7, 9, 9, 10000 };
 
-    auto data = request.serialize();
+    res_buf_t rbuf;
+    auto size = request.serialize(rbuf, 0);
     req_t ex_request{};
-    auto error = ex_request.deserialize(data);
+    auto error = ex_request.deserialize(rbuf);
     expect(!error);
     expect(request.address == ex_request.address) << request.address << " " << ex_request.address;
     expect(request.values.size() == ex_request.values.size()) << request.values.size() << " " << ex_request.values.size();
@@ -228,9 +241,10 @@ int main() {
     request.and_mask = 55;
     request.and_mask = 85;
 
-    auto data = request.serialize();
+    res_buf_t rbuf;
+    auto size = request.serialize(rbuf, 0);
     req_t ex_request{};
-    auto error = ex_request.deserialize(data);
+    auto error = ex_request.deserialize(rbuf);
     expect(!error);
     expect(request.address == ex_request.address) << request.address << " " << ex_request.address;
     expect(request.and_mask == ex_request.and_mask) << request.and_mask << " " << ex_request.and_mask;
@@ -244,9 +258,10 @@ int main() {
     request.read_address = 0;
     request.read_count = 39;
     request.write_address = 0;
-    auto data = request.serialize();
+    res_buf_t rbuf;
+    auto size = request.serialize(rbuf, 0);
     req_t ex_request{};
-    auto error = ex_request.deserialize(data);
+    auto error = ex_request.deserialize(rbuf);
     expect(!error);
     expect(request.values == ex_request.values);
     expect(request.read_address == ex_request.read_address);
@@ -259,9 +274,10 @@ int main() {
     res_t response{};
     response.values = { false, true, false, true, true, false, false, true, false };
 
-    auto data = response.serialize();
+    res_buf_t rbuf;
+    auto size = response.serialize(rbuf, 0);
     res_t ex_response{};
-    auto error = ex_response.deserialize(data);
+    auto error = ex_response.deserialize(rbuf);
     expect(!error) << error.message();
     auto s1 = (response.values.size() + 7) / 8;
     auto s2 = (ex_response.values.size() + 7) / 8;
@@ -275,9 +291,10 @@ int main() {
     res_t response{};
     response.values = { false, true, false, true, true, false, false, true, false };
 
-    auto data = response.serialize();
+    res_buf_t rbuf;
+    auto size = response.serialize(rbuf, 0);
     res_t ex_response{};
-    auto error = ex_response.deserialize(data);
+    auto error = ex_response.deserialize(rbuf);
     expect(!error) << error.message();
     auto s1 = (response.values.size() + 7) / 8;
     auto s2 = (ex_response.values.size() + 7) / 8;
@@ -291,9 +308,10 @@ int main() {
     res_t response{};
     response.values = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
 
-    auto data = response.serialize();
+    res_buf_t rbuf;
+    auto size = response.serialize(rbuf, 0);
     res_t ex_response{};
-    auto error = ex_response.deserialize(data);
+    auto error = ex_response.deserialize(rbuf);
     expect(!error) << error.message();
     auto s1 = (response.values.size() + 7) / 8;
     auto s2 = (ex_response.values.size() + 7) / 8;
@@ -307,9 +325,10 @@ int main() {
     res_t response{};
     response.values = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
 
-    auto data = response.serialize();
+    res_buf_t rbuf;
+    auto size = response.serialize(rbuf, 0);
     res_t ex_response{};
-    auto error = ex_response.deserialize(data);
+    auto error = ex_response.deserialize(rbuf);
     expect(!error) << error.message();
     auto s1 = (response.values.size() + 7) / 8;
     auto s2 = (ex_response.values.size() + 7) / 8;
@@ -324,9 +343,10 @@ int main() {
     response.address = 15;
     response.value = false;
 
-    auto data = response.serialize();
+    res_buf_t rbuf;
+    auto data = response.serialize(rbuf, 0);
     res_t ex_response{};
-    auto error = ex_response.deserialize(data);
+    auto error = ex_response.deserialize(rbuf);
     expect(!error) << error.message();
     expect(response.address == ex_response.address) << response.address << " " << ex_response.address;
     expect(response.value == ex_response.value) << response.value << " " << ex_response.value;
@@ -337,9 +357,10 @@ int main() {
     response.address = 15;
     response.value = 555;
 
-    auto data = response.serialize();
+    res_buf_t rbuf;
+    auto size = response.serialize(rbuf, 0);
     res_t ex_response{};
-    auto error = ex_response.deserialize(data);
+    auto error = ex_response.deserialize(rbuf);
     expect(!error) << error.message();
     expect(response.address == ex_response.address) << response.address << " " << ex_response.address;
     expect(response.value == ex_response.value) << response.value << " " << ex_response.value;
@@ -350,9 +371,10 @@ int main() {
     response.address = 15;
     response.count = 55;
 
-    auto data = response.serialize();
+    res_buf_t rbuf;
+    auto size = response.serialize(rbuf, 0);
     res_t ex_response{};
-    auto error = ex_response.deserialize(data);
+    auto error = ex_response.deserialize(rbuf);
     expect(!error) << error.message();
     expect(response.address == ex_response.address) << response.address << " " << ex_response.address;
     expect(response.count == ex_response.count) << response.count << " " << ex_response.count;
@@ -363,9 +385,10 @@ int main() {
     response.address = 15;
     response.count = 55;
 
-    auto data = response.serialize();
+    res_buf_t rbuf;
+    auto size = response.serialize(rbuf, 0);
     res_t ex_response{};
-    auto error = ex_response.deserialize(data);
+    auto error = ex_response.deserialize(rbuf);
     expect(!error) << error.message();
     expect(response.address == ex_response.address) << response.address << " " << ex_response.address;
     expect(response.count == ex_response.count) << response.count << " " << ex_response.count;
@@ -377,9 +400,10 @@ int main() {
     response.and_mask = 55;
     response.or_mask = 55;
 
-    auto data = response.serialize();
+    res_buf_t rbuf;
+    auto size = response.serialize(rbuf, 0);
     res_t ex_response{};
-    auto error = ex_response.deserialize(data);
+    auto error = ex_response.deserialize(rbuf);
     expect(!error) << error.message();
     expect(response.address == ex_response.address) << response.address << " " << ex_response.address;
     expect(response.and_mask == ex_response.and_mask) << response.and_mask << " " << ex_response.and_mask;
@@ -389,9 +413,10 @@ int main() {
     using req_t = modbus::response::read_write_multiple_registers;
     req_t response{};
     response.values = { 1337, 10, 15, 2 };
-    auto data = response.serialize();
+    res_buf_t rbuf;
+    auto size = response.serialize(rbuf, 0);
     req_t ex_response{};
-    auto error = ex_response.deserialize(data);
+    auto error = ex_response.deserialize(rbuf);
     expect(!error);
     expect(response.values == ex_response.values);
   };

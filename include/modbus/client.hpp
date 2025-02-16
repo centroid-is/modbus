@@ -248,13 +248,11 @@ protected:
                                          .length = static_cast<uint16_t>(request.length() + 1U),
                                          .unit = unit };
 
-                auto header_encoded = request_header.to_bytes();
-                auto request_serialized = impl::serialize_request(request);
+                res_buf_t request_buffer;
+                auto offset = request_header.to_bytes(request_buffer, 0);
+                offset = impl::serialize_request(request, request_buffer, offset);
 
-                std::vector<asio::const_buffer> buffers{ { asio::buffer(header_encoded),
-                                                           asio::buffer(request_serialized) } };
-
-                co_await asio::async_write(socket_, buffers, asio::use_awaitable);
+                co_await asio::async_write(socket_, asio::buffer(request_buffer, offset), asio::use_awaitable);
 
                 /// Buffer for read operations.
                 std::array<uint8_t, tcp_mbap::size> header_buffer{};

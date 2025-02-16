@@ -67,17 +67,11 @@ struct read_coils {
   /// The length of the serialized ADU in bytes.
   [[nodiscard]] static auto length() -> std::size_t { return 5; }
 
-  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
-    std::vector<uint8_t> ret_value;
-
-    ret_value.emplace_back(impl::serialize_function(function));
-    auto arr_address = impl::serialize_16_array(impl::serialize_be16(address));
-    ret_value.insert(ret_value.end(), arr_address.begin(), arr_address.end());
-
-    auto arr_count = impl::serialize_16_array(impl::serialize_be16(count));
-    ret_value.insert(ret_value.end(), arr_count.begin(), arr_count.end());
-
-    return ret_value;
+  [[nodiscard]] const auto serialize(res_buf_t& buffer, std::size_t offset) -> std::size_t {
+    offset = impl::serialize_function(function, buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(address), buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(count), buffer, offset);
+    return offset;
   }
 
   /// Deserialize request.
@@ -108,17 +102,12 @@ struct read_discrete_inputs {
   /// The length of the serialized ADU in bytes.
   [[nodiscard]] static auto length() -> std::size_t { return 5; }
 
-  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
-    std::vector<uint8_t> ret_value;
+  [[nodiscard]] auto serialize(res_buf_t& buffer, std::size_t offset) const -> std::size_t {
+    offset = impl::serialize_function(function, buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(address), buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(count), buffer, offset);
 
-    ret_value.emplace_back(impl::serialize_function(function));
-    auto arr_address = impl::serialize_16_array(impl::serialize_be16(address));
-    ret_value.insert(ret_value.end(), arr_address.begin(), arr_address.end());
-
-    auto arr_count = impl::serialize_16_array(impl::serialize_be16(count));
-    ret_value.insert(ret_value.end(), arr_count.begin(), arr_count.end());
-
-    return ret_value;
+    return offset;
   }
 
   /// Deserialize request.
@@ -149,17 +138,12 @@ struct read_holding_registers {
   /// The length of the serialized ADU in bytes.
   [[nodiscard]] static auto length() -> std::size_t { return 5; }
 
-  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
-    std::vector<uint8_t> ret_value;
+  [[nodiscard]] auto serialize(res_buf_t& buffer, std::size_t offset) const -> std::size_t {
+    offset = impl::serialize_function(function, buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(address), buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(count), buffer, offset);
 
-    ret_value.emplace_back(impl::serialize_function(function));
-    auto arr_address = impl::serialize_16_array(impl::serialize_be16(address));
-    ret_value.insert(ret_value.end(), arr_address.begin(), arr_address.end());
-
-    auto arr_count = impl::serialize_16_array(impl::serialize_be16(count));
-    ret_value.insert(ret_value.end(), arr_count.begin(), arr_count.end());
-
-    return ret_value;
+    return offset;
   }
 
   /// Deserialize request.
@@ -190,17 +174,12 @@ struct read_input_registers {
   /// The length of the serialized ADU in bytes.
   [[nodiscard]] static auto length() -> std::size_t { return 5; }
 
-  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
-    std::vector<uint8_t> ret_value;
+  [[nodiscard]] auto serialize(res_buf_t& buffer, std::size_t offset) -> std::size_t {
+    offset = impl::serialize_function(function, buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(address), buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(count), buffer, offset);
 
-    ret_value.emplace_back(impl::serialize_function(function));
-    auto arr_address = impl::serialize_16_array(impl::serialize_be16(address));
-    ret_value.insert(ret_value.end(), arr_address.begin(), arr_address.end());
-
-    auto arr_count = impl::serialize_16_array(impl::serialize_be16(count));
-    ret_value.insert(ret_value.end(), arr_count.begin(), arr_count.end());
-
-    return ret_value;
+    return offset;
   }
 
   /// Deserialize request.
@@ -231,17 +210,12 @@ struct write_single_coil {
   /// The length of the serialized ADU in bytes.
   [[nodiscard]] static auto length() -> std::size_t { return 5; }
 
-  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
-    std::vector<uint8_t> ret_value;
+  [[nodiscard]] auto serialize(res_buf_t& buffer, std::size_t offset) -> std::size_t {
+    offset = impl::serialize_function(function, buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(address), buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(impl::bool_to_uint16(value)), buffer, offset);
 
-    ret_value.emplace_back(impl::serialize_function(function));
-    auto arr_address = impl::serialize_16_array(impl::serialize_be16(address));
-    ret_value.insert(ret_value.end(), arr_address.begin(), arr_address.end());
-
-    auto arr_value = impl::serialize_16_array(impl::serialize_be16(impl::bool_to_uint16(value)));
-    ret_value.insert(ret_value.end(), arr_value.begin(), arr_value.end());
-
-    return ret_value;
+    return offset;
   }
 
   /// Deserialize request.
@@ -276,17 +250,12 @@ struct write_single_register {
   /// The length of the serialized ADU in bytes.
   [[nodiscard]] static auto length() -> std::size_t { return 5; }
 
-  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
-    std::vector<uint8_t> ret_value;
+  [[nodiscard]] auto serialize(res_buf_t& buffer, std::size_t offset) -> std::size_t {
+    offset = impl::serialize_function(function, buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(address), buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(value), buffer, offset);
 
-    ret_value.emplace_back(impl::serialize_function(function));
-    auto arr_address = impl::serialize_16_array(impl::serialize_be16(address));
-    ret_value.insert(ret_value.end(), arr_address.begin(), arr_address.end());
-
-    auto arr_value = impl::serialize_16_array(impl::serialize_be16(value));
-    ret_value.insert(ret_value.end(), arr_value.begin(), arr_value.end());
-
-    return ret_value;
+    return offset;
   }
 
   /// Deserialize request.
@@ -317,17 +286,12 @@ struct write_multiple_coils {
   /// The length of the serialized ADU in bytes.
   [[nodiscard]] auto length() const -> std::size_t { return 6 + (values.size() + 7) / 8; }
 
-  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
-    std::vector<uint8_t> ret_value;
+  [[nodiscard]] auto serialize(res_buf_t& buffer, std::size_t offset) -> std::size_t {
+    offset = impl::serialize_function(function, buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(address), buffer, offset);
+    offset = impl::serialize_bits_request(values, buffer, offset);
 
-    ret_value.emplace_back(impl::serialize_function(function));
-    auto arr_address = impl::serialize_16_array(impl::serialize_be16(address));
-    ret_value.insert(ret_value.end(), arr_address.begin(), arr_address.end());
-
-    auto arr_values = impl::serialize_bits_request(values);
-    ret_value.insert(ret_value.end(), arr_values.begin(), arr_values.end());
-
-    return ret_value;
+    return offset;
   }
 
   /// Deserialize request.
@@ -362,17 +326,12 @@ struct write_multiple_registers {
   /// The length of the serialized ADU in bytes.
   [[nodiscard]] auto length() const -> std::size_t { return 6 + values.size() * 2; }
 
-  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
-    std::vector<uint8_t> ret_value;
+  [[nodiscard]] auto serialize(res_buf_t& buffer, std::size_t offset) -> std::size_t {
+    offset = impl::serialize_function(function, buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(address), buffer, offset);
+    offset = impl::serialize_words_request(values, buffer, offset);
 
-    ret_value.emplace_back(impl::serialize_function(function));
-    auto arr_address = impl::serialize_16_array(impl::serialize_be16(address));
-    ret_value.insert(ret_value.end(), arr_address.begin(), arr_address.end());
-
-    auto arr_values = impl::serialize_words_request(values);
-    ret_value.insert(ret_value.end(), arr_values.begin(), arr_values.end());
-
-    return ret_value;
+    return offset;
   }
 
   /// Deserialize request.
@@ -410,20 +369,13 @@ struct mask_write_register {
   /// The length of the serialized ADU in bytes.
   [[nodiscard]] static auto length() -> std::size_t { return 7; }
 
-  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
-    std::vector<uint8_t> ret_value;
+  [[nodiscard]] auto serialize(res_buf_t& buffer, std::size_t offset) -> std::size_t {
+    offset = impl::serialize_function(function, buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(address), buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(and_mask), buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(or_mask), buffer, offset);
 
-    ret_value.emplace_back(impl::serialize_function(function));
-    auto arr_address = impl::serialize_16_array(impl::serialize_be16(address));
-    ret_value.insert(ret_value.end(), arr_address.begin(), arr_address.end());
-
-    auto arr_and_mask = impl::serialize_16_array(impl::serialize_be16(and_mask));
-    ret_value.insert(ret_value.end(), arr_and_mask.begin(), arr_and_mask.end());
-
-    auto arr_or_mask = impl::serialize_16_array(impl::serialize_be16(or_mask));
-    ret_value.insert(ret_value.end(), arr_or_mask.begin(), arr_or_mask.end());
-
-    return ret_value;
+    return offset;
   }
 
   /// Deserialize request.
@@ -461,23 +413,14 @@ struct read_write_multiple_registers {
   /// The length of the serialized ADU in bytes.
   [[nodiscard]] auto length() const -> std::size_t { return 10 + values.size() * 2; }
 
-  [[nodiscard]] auto serialize() const -> std::vector<uint8_t> {
-    std::vector<uint8_t> ret_value;
-    ret_value.emplace_back(impl::serialize_function(function));
+  [[nodiscard]] auto serialize(res_buf_t& buffer, std::size_t offset) -> std::size_t  {
+    offset = impl::serialize_function(function, buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(read_address), buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(read_count), buffer, offset);
+    offset = impl::serialize_16_array(impl::serialize_be16(write_address), buffer, offset);
+    offset = impl::serialize_words_request(values, buffer, offset);
 
-    auto read_address_arr = impl::serialize_16_array(impl::serialize_be16(read_address));
-    ret_value.insert(ret_value.end(), read_address_arr.begin(), read_address_arr.end());
-
-    auto read_count_arr = impl::serialize_16_array(impl::serialize_be16(read_count));
-    ret_value.insert(ret_value.end(), read_count_arr.begin(), read_count_arr.end());
-
-    auto write_address_arr = impl::serialize_16_array(impl::serialize_be16(write_address));
-    ret_value.insert(ret_value.end(), write_address_arr.begin(), write_address_arr.end());
-
-    auto arr_values = impl::serialize_words_request(values);
-    ret_value.insert(ret_value.end(), arr_values.begin(), arr_values.end());
-
-    return ret_value;
+    return offset;
   }
 
   /// Deserialize request.

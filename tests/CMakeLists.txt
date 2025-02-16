@@ -17,3 +17,6 @@ add_test(NAME integration COMMAND integration)
 
 add_executable(sniff_request_encoding helpers/mbpoll_request_encoding_sniffer.cpp)
 target_link_libraries(sniff_request_encoding PRIVATE modbus)
+
+add_executable(speed_debugging speed_debugging.cpp)
+target_link_libraries(speed_debugging PRIVATE Boost::ut modbus)

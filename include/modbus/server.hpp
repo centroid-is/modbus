@@ -1,10 +1,11 @@
+// Copyright (c) 2025, Centroid ehf (https://centroid.is)
+
 #pragma once
 
 #include <array>
 #include <expected>
 #include <iostream>
 #include <ranges>
-#include <string>
 
 #include <asio/as_tuple.hpp>
 #include <asio/experimental/awaitable_operators.hpp>
@@ -30,22 +31,22 @@ using std::chrono_literals::operator""s;
 using std::chrono_literals::operator""min;
 using asio::experimental::awaitable_operators::operator||;
 
-auto handle_request(tcp_mbap const& header, std::ranges::range auto data, auto&& handler)
-    -> std::expected<std::vector<uint8_t>, modbus::errc_t> {
+auto handle_request(tcp_mbap const& header, res_buf_t& data, res_buf_t& buffer, std::size_t offset, auto&& handler)
+    -> std::expected<std::size_t, errc_t> {
   auto req_variant = impl::deserialize_request(std::span(data), static_cast<function_e>(data[0]));
   if (!req_variant) {
-    return std::unexpected(modbus::errc_t::illegal_data_value);
+    return std::unexpected(errc_t::illegal_data_value);
   }
   auto req = req_variant.value();
 
   auto resp = std::visit(
-      [&](auto& request) -> std::expected<std::vector<uint8_t>, modbus::errc_t> {
-        modbus::errc_t error = modbus::errc_t::no_error;
+      [&](auto& request) -> std::expected<std::size_t, modbus::errc_t> {
+        errc_t error = errc_t::no_error;
         response::responses resp = handler->handle(header.unit, request, error);
         if (error) {
           return std::unexpected(error);
         }
-        return impl::serialize_response(resp);
+        return impl::serialize_response(resp, buffer, offset);
       },
       req);
 
@@ -80,12 +81,15 @@ auto build_error_buffer(tcp_mbap req_header, uint8_t function, errc::errc_t erro
 
 auto handle_connection(tcp::socket client, auto&& handler) -> awaitable<void> {
   auto state = std::make_shared<connection_state>(std::move(client));
-  std::array<uint8_t, 7> header_buffer{};
-  std::array<uint8_t, 1024> request_buffer{};
+  res_buf_t read_buffer{};
+  res_buf_t write_buffer{};
+  uint64_t rqps = 0;
+  auto rqps_index = 0;
   for (;;) {
     auto result = co_await (
-        state->client_.async_read_some(asio::buffer(header_buffer, tcp_mbap::size), asio::as_tuple(asio::use_awaitable)) ||
+        state->client_.async_read_some(asio::buffer(read_buffer, tcp_mbap::size), asio::as_tuple(asio::use_awaitable)) ||
         timeout(60s));
+    // Log current time for request
     if (result.index() == 1) {
       // Timeout
       std::cerr << "timeout client: " << state->client_.remote_endpoint() << " Disconnecting!" << '\n';
@@ -102,7 +106,7 @@ auto handle_connection(tcp::socket client, auto&& handler) -> awaitable<void> {
       break;
     }
     // Deserialize the request
-    auto header = tcp_mbap::from_bytes(header_buffer);
+    auto header = tcp_mbap::from_bytes(read_buffer, 0);
 
     if (header.length < 2) {
       co_await async_write(state->client_, asio::buffer(build_error_buffer(header, 0, errc::illegal_function), count),
@@ -112,7 +116,7 @@ auto handle_connection(tcp::socket client, auto&& handler) -> awaitable<void> {
 
     // Read the request body
     auto [request_ec, request_count] = co_await state->client_.async_read_some(
-        asio::buffer(request_buffer, header.length - 1), asio::as_tuple(asio::use_awaitable));
+        asio::buffer(read_buffer, header.length - 1), asio::as_tuple(asio::use_awaitable));
     if (request_ec) {
       std::cerr << "error client: " << state->client_.remote_endpoint() << " Disconnecting!" << '\n';
       break;
@@ -123,16 +127,24 @@ auto handle_connection(tcp::socket client, auto&& handler) -> awaitable<void> {
                 << " Disconnecting!" << std::endl;
       co_await async_write(state->client_, asio::buffer(build_error_buffer(header, 0, errc::illegal_data_value), count),
                            use_awaitable);
-      continue;
+      break;
     }
 
+    // Get an idea of the load on the server.
+    auto second = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count() % 10;
+    if (second != rqps_index) { // We have a new second
+      std::cout << "Second request_count : " << rqps << std::endl;
+      rqps_index = second;
+      rqps = 0;
+    }
+    rqps++;
+
     // Handle the request
-    auto resp = handle_request(header, request_buffer, handler);
+    auto resp = handle_request(header, read_buffer, write_buffer, tcp_mbap::size, handler);
     if (resp) {
-      header.length = resp.value().size() + 1;
-      auto header_bytes = header.to_bytes();
-      std::array<asio::const_buffer, 2> buffs{ asio::buffer(header_bytes), asio::buffer(resp.value()) };
-      co_await async_write(state->client_, buffs, use_awaitable);
+      header.length = resp.value() + 1;
+      auto size = header.to_bytes(write_buffer, 0);
+      co_await async_write(state->client_, asio::buffer(write_buffer, header.length), use_awaitable);
     } else {
       std::cerr << "error client: " << state->client_.remote_endpoint() << " error " << modbus_error(resp.error()).message()
                 << '\n';

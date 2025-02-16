@@ -8,11 +8,11 @@
 
 namespace modbus::impl {
 
-[[nodiscard]] auto serialize_response(response::responses const& response_variant) -> std::vector<uint8_t> {
-  return std::visit([](auto& response) { return response.serialize(); }, response_variant);
+[[nodiscard]] auto serialize_response(response::responses& response_variant, res_buf_t& buffer, std::size_t offset) -> std::size_t {
+  return std::visit([&buffer, offset](auto& response) mutable { return response.serialize(buffer, offset); }, response_variant);
 }
 
-[[nodiscard]] auto serialize_request(request::requests const& request_variant) -> std::vector<uint8_t> {
-  return std::visit([](auto& request) { return request.serialize(); }, request_variant);
+[[nodiscard]] auto serialize_request(request::requests& request_variant, res_buf_t& buffer, std::size_t offset) -> std::size_t {
+  return std::visit([&buffer, offset](auto& request) mutable { return request.serialize(buffer, offset); }, request_variant);
 }
 }  // namespace modbus::impl
