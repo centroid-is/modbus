@@ -20,10 +20,10 @@ include(CTest)
 
 include(FeatureSummary)
 
-option(BUILD_TESTS "Indicates whether tests should be built." ON)
+option(BUILD_TESTS "Indicates whether tests should be built." OFF)
 add_feature_info("BUILD_TESTS" BUILD_TESTS "Indicates whether tests should be built.")
 
-option(BUILD_EXAMPLES "Indicates whether examples should be built." ON)
+option(BUILD_EXAMPLES "Indicates whether examples should be built." OFF)
 add_feature_info("BUILD_EXAMPLES" BUILD_EXAMPLES "Indicates whether examples should be built.")
 
 add_library(modbus
