@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 3.22)
 project(modbus
   VERSION
     2024.4.1
@@ -12,8 +12,8 @@ add_compile_definitions(BOOST_UT_DISABLE_MODULE)
 
 set(CMAKE_CXX_STANDARD 23)
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(asio REQUIRED IMPORTED_TARGET GLOBAL asio)
+# find_package(PkgConfig REQUIRED)
+# pkg_check_modules(asio REQUIRED IMPORTED_TARGET GLOBAL asio)
 
 set_property(GLOBAL PROPERTY CTEST_TARGETS_ADDED 1)
 include(CTest)
@@ -29,10 +29,18 @@ add_feature_info("BUILD_EXAMPLES" BUILD_EXAMPLES "Indicates whether examples sho
 add_library(modbus
   src/error.cpp)
 
-target_link_libraries(modbus PUBLIC PkgConfig::asio)
+# Locate standalone asio. We require >= 1.22 (for as_tuple); Ubuntu jammy
+# ships 1.18, so we prefer a vendored copy under /opt/asio.
+find_path(ASIO_INCLUDE_DIR
+  NAMES asio/as_tuple.hpp
+  HINTS /opt/asio/include
+  REQUIRED)
+
 target_include_directories(modbus PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${ASIO_INCLUDE_DIR}>
         $<INSTALL_INTERFACE:include>
+        $<INSTALL_INTERFACE:${ASIO_INCLUDE_DIR}>
 )
 
 include(GNUInstallDirs)
@@ -108,4 +116,20 @@ install(
         NAMESPACE modbus::
         DESTINATION ${modbus_INSTALL_CMAKEDIR}
 )
+
+# --- CPack: produce a binary .deb -------------------------------------------
+set(CPACK_GENERATOR "DEB")
+set(CPACK_PACKAGE_NAME "recompute-modbus")
+set(CPACK_PACKAGE_VENDOR "Centroid")
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
+  "Boost.Asio-based Modbus library (header-only deps; static link)")
+set(CPACK_PACKAGE_CONTACT "Centroid <build@centroid.local>")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "${CPACK_PACKAGE_CONTACT}")
+set(CPACK_DEBIAN_PACKAGE_SECTION "libdevel")
+# Depends on the vendored asio (>= 1.22) shipped as recompute-vendor-headers.
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "recompute-vendor-headers")
+set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "arm64")
+set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+include(CPack)
 
