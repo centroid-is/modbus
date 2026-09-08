@@ -91,7 +91,8 @@ public:
               ctx_,
               [&, self = std::move(self)]() mutable -> asio::awaitable<void> {
                 tcp::resolver resolver{ co_await asio::this_coro::executor };
-                auto [error, endpoint] = co_await resolver.async_resolve(hostname, port, asio::as_tuple(asio::use_awaitable));
+                auto [error, endpoint] =
+                    co_await resolver.async_resolve(hostname, port, asio::as_tuple(asio::use_awaitable));
                 if (error) {
                   self.complete(error);
                   co_return;
